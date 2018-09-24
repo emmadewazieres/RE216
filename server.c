@@ -27,13 +27,13 @@ int do_socket(int domaine, int type, int protocol){
 }
 
 //Init the server address structure
-void init_serv_addr(const char* port, struct sockaddr_in *serv_addr){
+void init_serv_addr(char* port, struct sockaddr_in *serv_addr){
   int portno;
   memset(&serv_addr,0, sizeof(serv_addr));
   portno = atol(port);
-  serv_addr.sin_port = htons(portno);
-  serv_addr.sin_family = AF_INET;
-  serv_addr.sin_addr.s_addr = INADDR_ANY;
+  serv_addr->sin_port = htons(portno);
+  serv_addr->sin_family = AF_INET;
+  serv_addr->sin_addr.s_addr = INADDR_ANY;
 }
 
 //binding
@@ -49,7 +49,7 @@ int do_bind(int sock, const struct sockaddr *adr, int adrlen){
 
 //specify the socket to be a server socket and listen for at most 20 concurrent client
 int do_listen(int socket){
-  int test=listent(socket,20);
+  int test=listen(socket,20);
   if (test==-1){
     perror("ERROR listening failed");
     exit(EXIT_FAILURE);
@@ -66,10 +66,10 @@ int main(int argc, char** argv)
     }
 
     //Create the socket
-    int sock = do_socket(AF_INET,SOCK_STREAM,IPPROTO_TCP)
+    int sock = do_socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
 
     //Init the server address structure
-    struct sockaddr_in saddr_in;
+    struct sockaddr_in *saddr_in;
     init_serv_addr(argv[1],saddr_in);
 
     //perform the binding

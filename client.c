@@ -7,11 +7,11 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
-void init_client_addr(const char* port, struct sockaddr_in *serv_addr){
+void init_client_addr(int port, struct sockaddr_in *sock_host){
 memset(&sock_host,'\0',sizeof(sock_host));
-sock_host.sin_family=AF_INET;
-sock_host.sin_port=htons(port);
-inet_aton("127.0.0.0",&sock_host.sinaddr);
+sock_host->sin_family=AF_INET;
+sock_host->sin_port=htons(port);
+inet_aton("127.0.0.0",sock_host->sin_addr);
 }
 
 //Create the socket
@@ -37,7 +37,14 @@ int do_connect(int socket,struct sockaddr *address, int address_len){
   }
 }
 
-
+//send message to the server
+ssize_t sendline(int fd, const void *str, size_t maxlen){
+  //d'abord on lit le message puis on l'écrit dans le serveur
+  int sent = 0;
+  while (sent != maxlen){
+    sent += write(fd,&str,maxlen-sent);
+  }
+}
 
 int main(int argc,char** argv){
 
@@ -48,7 +55,7 @@ int main(int argc,char** argv){
     }
 
 //get address info from the server
-struct sockaddr_in sock_host;
+struct sockaddr_in *sock_host;
 init_client_addr(argv[2],sock_host);
 
 //get the socket
@@ -63,6 +70,7 @@ printf("Veuillez entrer votre message : ");
 fgets(message,255,stdin);
 
 //send message to the server
+
 //handle_client_message()
 
 
