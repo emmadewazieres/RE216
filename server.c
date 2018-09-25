@@ -36,7 +36,7 @@ void init_serv_addr(const char* port, struct sockaddr_in *serv_addr){
   memset(serv_addr,0, sizeof(serv_addr));
 
   //cast the port from a string to an int
-  portno = atol(port);
+  portno = atoi(port);
   serv_addr->sin_port = htons(portno);
   //internet family protocol
   serv_addr->sin_family = AF_INET;
@@ -57,6 +57,27 @@ int do_bind(int sock, const struct sockaddr *adr, int adrlen){
   }
 }
 
+int do_listen(int socket,int backlog){
+  int valeur_listen;
+  valeur_listen = listen(socket,backlog);
+  if (valeur_listen == -1){
+    perror("listen");
+    exit(EXIT_FAILURE);
+  }
+  return(valeur_listen);
+}
+
+int do_accept(int socket, struct sockaddr* addr, socklen_t addrlen){
+  int valeur_accept;
+  valeur_accept = accept(socket,addr, addrlen);
+  if (valeur_accept == -1){
+    perror("accept");
+    exit(EXIT_FAILURE);
+  }
+  return(valeur_accept);
+}
+
+
 int main(int argc, char** argv)
 {
 
@@ -74,15 +95,20 @@ int main(int argc, char** argv)
 
     //init the serv_add structure
     struct sockaddr_in *saddr_in;
-    init_serv_addr(argv[2],saddr_in);
+    init_serv_addr(argv[1],saddr_in);
+
 
     //perform the binding
     //we bind on the tcp port specified
     //Explication parametre 2 page 65
-    do_bind(socket_serveur,(struct sockaddr*)&saddr_in,sizeof(saddr_in));
+    do_bind(socket_serveur,(struct sockaddr *)saddr_in,sizeof(*saddr_in));
+    printf("brbh");
 
     //specify the socket to be a server socket and listen for at most 20 concurrent client
     //listen()
+    int valeur_listen;
+    valeur_listen = do_listen(socket_serveur,SOMAXCONN);
+
 
     for (;;)
     {

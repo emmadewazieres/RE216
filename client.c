@@ -56,7 +56,7 @@ void do_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen){
   int res = connect(sockfd,addr,addrlen);
   if (res !=0){
     fprintf(stderr,"Echec connexion\n");
-    return 1;
+      exit(EXIT_FAILURE);
   }
 }
 
@@ -80,10 +80,12 @@ void do_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen){
 */
 
 char *readline(){
-  char *texte_msg;
-  scanf("%s\n",&texte_msg);
-  return(texte_msg);
-  }
+  char *message = malloc(sizeof(char)*40);
+  printf("message à envoyer\n");
+  fgets(message,40,stdin);
+  printf("dans readline %s\n",message);
+  return(message);
+}
 
 
 
@@ -123,12 +125,13 @@ int main(int argc,char** argv)
 
 
 //get address info from the server
+
 struct sockaddr_in sock_host;
 memset(&sock_host,'\0',sizeof(sock_host));
 sock_host.sin_family = AF_INET;
-sock_host.sin_port = argv[3];
+sock_host.sin_port = htons(atoi(argv[2]));
 //sock_host.sin_addr.s_addr = htonl(INADDR_ANY);
-inet_aton(argv[2], &sock_host.sin_addr);
+inet_aton(argv[1], &sock_host.sin_addr);
 
 
 //get_addr_info()
@@ -145,14 +148,17 @@ do_connect(s,(struct sockaddr *)&sock_host, sizeof(sock_host));     //a complete
 
 
 //get user input
-char *texte_user;
-texte_user=readline();
-printf("%s\n",&texte_user);  //juste pour tester
 
+
+char *texte = malloc(sizeof(char)*40);
+texte = readline();
+printf("dans main %s\n",texte);
 
 
 //send message to the server
-//do_send(); //mettre bonnes valeurs dans ()
+int valeur_send;
+valeur_send = do_send(s,texte,sizeof(texte),0); //mettre bonnes valeurs dans ()
+printf("valeur send %d\n",valeur_send);
 //handle_client_message()
 
 
