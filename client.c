@@ -134,6 +134,7 @@ do_connect(s,(struct sockaddr *)&sock_host, sizeof(sock_host));     //a complete
 
 
 char *texte = malloc(sizeof(char)*40);
+while ((strcmp(texte,"/quit\n") != 0)){
 texte = readline();
 printf("dans main %s\n",texte);
 
@@ -142,9 +143,13 @@ printf("dans main %s\n",texte);
 int valeur_send;
 valeur_send = do_send(s,texte,sizeof(texte),0); //mettre bonnes valeurs dans ()
 printf("valeur send %d\n",valeur_send);
+
 //handle_client_message()
 char *message = malloc(sizeof(char)*40);
-do_recv(s,message, sizeof(message),0);
+int valeur_recv = do_recv(s,message, sizeof(message),0);
+printf("valeur recv %d\n",valeur_recv);
+printf("le message du serveur est : %s",message);
+}
 
 
     return 0;

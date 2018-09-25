@@ -132,7 +132,7 @@ int main(int argc, char** argv)
     //we bind on the tcp port specified
     //Explication parametre 2 page 65
     do_bind(socket_serveur,(struct sockaddr *)&saddr_in,sizeof(saddr_in));
-    printf("brbh");
+
 
     //specify the socket to be a server socket and listen for at most 20 concurrent client
     //listen()
@@ -140,8 +140,7 @@ int main(int argc, char** argv)
     valeur_listen = do_listen(socket_serveur,SOMAXCONN);
 
 
-    for (;;)
-    {
+
 
         //accept connection from client
         int valeur_accept;
@@ -150,15 +149,20 @@ int main(int argc, char** argv)
         valeur_accept = do_accept(socket_serveur,(struct sockaddr *)&saddr_in,addrlen);
         printf("valeur_accept dans main%d\n",valeur_accept);
 
-        //read what the client has to say
         char *message = malloc(sizeof(char)*40);
-        int valeur_recv = do_recv(socket_serveur,message,sizeof(message),0);
+while ((strcmp(message,"/quit\n") != 0)){
+        //read what the client has to say
+
+        int valeur_recv = do_recv(valeur_accept,message,sizeof(message),0);
+        printf("valeur_recv dans main%d\n",valeur_recv);
 
         //we write back to the client
-        int valeur_send = do_send(socket_serveur,message,sizeof(message),0);
+        int valeur_send = do_send(valeur_accept,message,sizeof(message),0);
+        printf("valeur send %d\n",valeur_send);
+      }
 
         //clean up client socket
-    }
+close(valeur_accept);
 
     //clean up server socket
 close(socket_serveur);
