@@ -2,103 +2,71 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include<netinet/in.h>
-
 #include<fcntl.h>
 
-
-/*il faut rajouter l'option rebouting*/
-
+//Creation of the socket
 int do_socket(){
-  int sockfd;
-  int yes=1;
-  //create the socket
-  sockfd = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
-  printf("%d\n",sockfd);
-  //check for validity
-
+  int sockfd = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
   if (sockfd == -1)
   {
-      perror("socket");
+      perror("ERROR creation failed");
       exit(EXIT_FAILURE);
   }
   else
     return(sockfd);
 }
 
-
-
-
+//Connection with the server
 void do_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen){
-  int res = connect(sockfd,addr,addrlen);
-  if (res !=0){
-    fprintf(stderr,"Echec connexion\n");
-      exit(EXIT_FAILURE);
+  int connection = connect(sockfd,addr,addrlen);
+  if (connection !=0){
+    perror("ERROR connection failed");
+    exit(EXIT_FAILURE);
   }
 }
 
-/*void readline(int socket){
-  char *texte_msg;
-  scanf("%s",&texte_msg);
-  printf("%s\n",&texte_msg);*/
-  /*char *texte;
-  scanf("%s",&texte);
-  int sent = 0;
-  do{
-    sent += write(socket,&texte + sent, sizeof(texte) - sent);
-  }while (sent != sizeof(texte));
-  int tens = 0;
-  do{
-    tens += read(STDIN_FILENO, socket + tens, sizeof(texte) - tens);
-  }while (tens != sizeof(texte));
-*/
-
+//Get what the client has to say
 char *readline(){
   char *message = malloc(sizeof(char)*40);
-  printf("message à envoyer\n");
+  printf("What's up ?\n");
   fgets(message,40,stdin);
-  printf("dans readline %s\n",message);
   return(message);
 }
 
-
-
-  //write(socket, &texte, sizeof(texte));
-  //read()
-
+//Sending
 int do_send(int sockfd, const void *msg, size_t len, int flags){
- int valeur_send;
- valeur_send = send(sockfd, msg, len, flags);
-    //Vérification toutes les donnees ont ete envoyees
- if (valeur_send == -1){
-   perror("send");
+ int sending;
+ sending = send(sockfd, msg, len, flags);
+ if (sending == -1){
+   perror("ERROR sending failed");
    exit(EXIT_FAILURE);
  }
- if (valeur_send != len){
- printf("tous les octets n'ont pas ete transmis");
+ if (sending != len){
+ printf("The message has not been fully transmitted \n");
  }
- return(valeur_send);
+ return(sending);
 }
 
+//Reception
 int do_recv(int sockfd, void *buf, int len, unsigned int flags){
-  int valeur_recv=recv(sockfd,buf,len,flags);
-  if (valeur_recv==-1){
+  int reception=recv(sockfd,buf,len,flags);
+  if (reception==-1){
     perror("ERROR reception failed");
     exit(EXIT_FAILURE);
   }
-  if (valeur_recv != len){
-    printf("The message has not been fully transmitted");
+  if (reception != len){
+    printf("The message has not been fully transmitted \n");
   }
-  return (valeur_recv);
+  return (reception);
 }
+
 
 int main(int argc,char** argv)
 {
-
 
     if (argc != 3)
     {
@@ -106,53 +74,35 @@ int main(int argc,char** argv)
         return 1;
     }
 
+    //get address info from the server
+    struct sockaddr_in sock_host;
+    memset(&sock_host,'\0',sizeof(sock_host));
+    sock_host.sin_family = AF_INET;
+    sock_host.sin_port = htons(atoi(argv[2]));
+    inet_aton(argv[1], &sock_host.sin_addr);
 
-//get address info from the server
+    //Creation of the socket
+    int socket = do_socket();
 
-struct sockaddr_in sock_host;
-memset(&sock_host,'\0',sizeof(sock_host));
-sock_host.sin_family = AF_INET;
-sock_host.sin_port = htons(atoi(argv[2]));
-//sock_host.sin_addr.s_addr = htonl(INADDR_ANY);
-inet_aton(argv[1], &sock_host.sin_addr);
+    //Connection to the server
+    do_connect(socket,(struct sockaddr *)&sock_host, sizeof(sock_host));
 
+    //Getting user input
+    char *text = malloc(sizeof(char)*40);
 
-//get_addr_info()
+    while ((strcmp(text,"/quit\n") != 0)){
+      text = readline();
 
+      //Sending the message to the server
+      int sending = do_send(socket,text,sizeof(text),0);
 
-//get the socket
-int s;
-s = do_socket();
-printf("s=%d\n",s);
+      //Answer from the server
+      char *message = malloc(sizeof(char)*40);
+      do_recv(socket,message, sizeof(message),0);
+      printf("The server has answered you : %s\n",message);
 
-//connect to remote socket
-do_connect(s,(struct sockaddr *)&sock_host, sizeof(sock_host));     //a completer avec get @
-
-
-
-//get user input
-
-
-char *texte = malloc(sizeof(char)*40);
-while ((strcmp(texte,"/quit\n") != 0)){
-texte = readline();
-printf("dans main %s\n",texte);
-
-
-//send message to the server
-int valeur_send;
-valeur_send = do_send(s,texte,sizeof(texte),0); //mettre bonnes valeurs dans ()
-printf("valeur send %d\n",valeur_send);
-
-//handle_client_message()
-char *message = malloc(sizeof(char)*40);
-int valeur_recv = do_recv(s,message, sizeof(message),0);
-printf("valeur recv %d\n",valeur_recv);
-printf("le message du serveur est : %s",message);
-}
-
+    }
 
     return 0;
-
 
 }
