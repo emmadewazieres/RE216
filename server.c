@@ -29,20 +29,24 @@ int do_socket(){
     return(sockfd);
 }
 
-void init_serv_addr(const char* port, struct sockaddr_in *serv_addr){
+ struct sockaddr_in init_serv_addr(const char* port){
 
   int portno;
   //clean the serv_add structure
-  memset(serv_addr,0, sizeof(serv_addr));
+  struct sockaddr_in saddr_in;
+  memset(&saddr_in,'\0', sizeof(saddr_in));
 
   //cast the port from a string to an int
   portno = atoi(port);
-  serv_addr->sin_port = htons(portno);
+  saddr_in.sin_port = htons(portno);
   //internet family protocol
-  serv_addr->sin_family = AF_INET;
+  saddr_in.sin_family = AF_INET;
 
   //we bind to any ip form the hostname
-  serv_addr->sin_addr.s_addr = INADDR_ANY;
+  saddr_in.sin_addr.s_addr = INADDR_ANY;
+
+  return(saddr_in);
+
 }
 
 int do_bind(int sock, const struct sockaddr *adr, int adrlen){
@@ -67,9 +71,10 @@ int do_listen(int socket,int backlog){
   return(valeur_listen);
 }
 
-int do_accept(int socket, struct sockaddr* addr, socklen_t addrlen){
+int do_accept(int socket, struct sockaddr* addr, socklen_t *addrlen){
   int valeur_accept;
   valeur_accept = accept(socket,addr, addrlen);
+  printf("valeur_accept%d\n",valeur_accept);
   if (valeur_accept == -1){
     perror("accept");
     exit(EXIT_FAILURE);
@@ -94,14 +99,15 @@ int main(int argc, char** argv)
 
 
     //init the serv_add structure
-    struct sockaddr_in *saddr_in;
-    init_serv_addr(argv[1],saddr_in);
+    struct sockaddr_in saddr_in;
+
+    saddr_in = init_serv_addr(argv[1]);
 
 
     //perform the binding
     //we bind on the tcp port specified
     //Explication parametre 2 page 65
-    do_bind(socket_serveur,(struct sockaddr *)saddr_in,sizeof(*saddr_in));
+    do_bind(socket_serveur,(struct sockaddr *)&saddr_in,sizeof(saddr_in));
     printf("brbh");
 
     //specify the socket to be a server socket and listen for at most 20 concurrent client
@@ -114,7 +120,11 @@ int main(int argc, char** argv)
     {
 
         //accept connection from client
-        //do_accept()
+        int valeur_accept;
+        socklen_t taille = sizeof(saddr_in);
+        socklen_t* addrlen = &taille;
+        valeur_accept = do_accept(socket_serveur,(struct sockaddr *)&saddr_in,addrlen);
+        printf("valeur_accept dans main%d\n",valeur_accept);
 
         //read what the client has to say
         //do_read()
