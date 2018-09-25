@@ -6,47 +6,99 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include<netinet/in.h>
 
-void init_client_addr(int port, struct sockaddr_in *sock_host){
-memset(&sock_host,'\0',sizeof(sock_host));
-sock_host->sin_family=AF_INET;
-sock_host->sin_port=htons(port);
-inet_aton("127.0.0.0",sock_host->sin_addr);
-}
+#include<fcntl.h>
 
-//Create the socket
-int do_socket(int domaine, int type, int protocol){
+
+/*il faut rajouter l'option rebouting*/
+
+int do_socket(){
   int sockfd;
-  sockfd=socket(domaine,type,protocol);
+  int yes=1;
+  //create the socket
+  sockfd = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
+  printf("%d\n",sockfd);
   //check for validity
-  if (sockfd == -1){
-    perror("ERROR socket validity");
-    exit(EXIT_FAILURE);
+
+  if (sockfd == -1)
+  {
+      perror("socket");
+      exit(EXIT_FAILURE);
   }
-  else {
-    return sockfd;
+  else
+    return(sockfd);
+}
+
+
+
+
+void do_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen){
+  int res = connect(sockfd,addr,addrlen);
+  if (res !=0){
+    fprintf(stderr,"Echec connexion\n");
+      exit(EXIT_FAILURE);
   }
 }
 
-//Connect to remote server
-int do_connect(int socket,struct sockaddr *address, int address_len){
-  int res=connect(socket,(struct sockaddr*)&address,address_len);
-  if (res!=0){
-    perror("ERROR connection failed");
-    exit(EXIT_FAILURE);
-  }
-}
-
-//send message to the server
-ssize_t sendline(int fd, const void *str, size_t maxlen){
-  //d'abord on lit le message puis on l'écrit dans le serveur
+/*void readline(int socket){
+  char *texte_msg;
+  scanf("%s",&texte_msg);
+  printf("%s\n",&texte_msg);*/
+  /*char *texte;
+  scanf("%s",&texte);
   int sent = 0;
-  while (sent != maxlen){
-    sent += write(fd,&str,maxlen-sent);
-  }
+  do{
+    sent += write(socket,&texte + sent, sizeof(texte) - sent);
+  }while (sent != sizeof(texte));
+  int tens = 0;
+  do{
+    tens += read(STDIN_FILENO, socket + tens, sizeof(texte) - tens);
+  }while (tens != sizeof(texte));
+*/
+
+char *readline(){
+  char *message = malloc(sizeof(char)*40);
+  printf("message à envoyer\n");
+  fgets(message,40,stdin);
+  printf("dans readline %s\n",message);
+  return(message);
 }
 
-int main(int argc,char** argv){
+
+
+  //write(socket, &texte, sizeof(texte));
+  //read()
+
+int do_send(int sockfd, const void *msg, size_t len, int flags){
+ int valeur_send;
+ valeur_send = send(sockfd, msg, len, flags);
+    //Vérification toutes les donnees ont ete envoyees
+ if (valeur_send == -1){
+   perror("send");
+   exit(EXIT_FAILURE);
+ }
+ if (valeur_send != len){
+ printf("tous les octets n'ont pas ete transmis");
+ }
+ return(valeur_send);
+}
+
+int do_recv(int sockfd, void *buf, int len, unsigned int flags){
+  int valeur_recv=recv(sockfd,buf,len,flags);
+  if (valeur_recv==-1){
+    perror("ERROR reception failed");
+    exit(EXIT_FAILURE);
+  }
+  if (valeur_recv != len){
+    printf("The message has not been fully transmitted");
+  }
+  return (valeur_recv);
+}
+
+int main(int argc,char** argv)
+{
+
 
     if (argc != 3)
     {
@@ -54,24 +106,45 @@ int main(int argc,char** argv){
         return 1;
     }
 
+
 //get address info from the server
-struct sockaddr_in *sock_host;
-init_client_addr(argv[2],sock_host);
+
+struct sockaddr_in sock_host;
+memset(&sock_host,'\0',sizeof(sock_host));
+sock_host.sin_family = AF_INET;
+sock_host.sin_port = htons(atoi(argv[2]));
+//sock_host.sin_addr.s_addr = htonl(INADDR_ANY);
+inet_aton(argv[1], &sock_host.sin_addr);
+
+
+//get_addr_info()
+
 
 //get the socket
-int s=do_socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
+int s;
+s = do_socket();
+printf("s=%d\n",s);
 
 //connect to remote socket
-do_connect(s,(struct sockaddr *)&sock_host,sizeof(sock_host));
+do_connect(s,(struct sockaddr *)&sock_host, sizeof(sock_host));     //a completer avec get @
+
+
 
 //get user input
-char message[255];
-printf("Veuillez entrer votre message : ");
-fgets(message,255,stdin);
+
+
+char *texte = malloc(sizeof(char)*40);
+texte = readline();
+printf("dans main %s\n",texte);
+
 
 //send message to the server
-
+int valeur_send;
+valeur_send = do_send(s,texte,sizeof(texte),0); //mettre bonnes valeurs dans ()
+printf("valeur send %d\n",valeur_send);
 //handle_client_message()
+char *message = malloc(sizeof(char)*40);
+do_recv(s,message, sizeof(message),0);
 
 
     return 0;
