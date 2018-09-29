@@ -170,13 +170,13 @@ while(1){
 
   int valeur_poll = do_poll(tab_fd,time_out);
   printf("valeur poll %d\n",valeur_poll);
-
+printf("salut");
   //Listening
-
+printf("avant for");
   int j;
   for (j = 1; j<22; j++){
-
-    if(tab_fd[j].fd == 0){
+printf("dans for %d",j);
+    if(tab_fd[0].revents == POLLIN && tab_fd[j].fd == 0){
 
       //accept connection from client
       int sock_client;
@@ -185,6 +185,7 @@ while(1){
       sock_client = do_accept(socket_server,(struct sockaddr *)&saddr_in,addrlen);
 
       tab_fd[j].fd = sock_client;
+      tab_fd[j].revents = POLLIN;
       if (j > NBE_CONNEXION){
         char *trop_message = "trop de connexions, reviens plus tard.\n";
         do_send(sock_client,trop_message,MAX_LENGHT_MESSAGE,0);
@@ -192,11 +193,12 @@ while(1){
         tab_fd[j].fd = 0;
       }
     }
-    else {
-      if(tab_fd[j].revents == POLLIN){
+
+      if(tab_fd[j].fd != 0 && tab_fd[j].revents == POLLIN){
 
     char *message = malloc(MAX_LENGHT_MESSAGE);
 
+while ((strcmp(message,"/quit\n") != 0)){
 
         do_recv(tab_fd[j].fd,message,MAX_LENGHT_MESSAGE,0);
         printf("The client avec socket n°%d has sent you : %s\n",tab_fd[j].fd,message);
@@ -204,6 +206,7 @@ while(1){
         if ((strcmp(message,"/quit\n") != 0)){
           //we write back to the client
           do_send(tab_fd[j].fd,message,MAX_LENGHT_MESSAGE,0);
+          break;
         }
         else {
           char *last_message = "Closing connection.\n";
@@ -213,6 +216,7 @@ while(1){
           tab_fd[j].fd = 0;
         }
       }
+
     }
     //clean up client socket
 
