@@ -9,7 +9,7 @@
 #include<poll.h>
 
 #define MAX_LENGHT_MESSAGE 1000
-#define NBE_CONNEXION 20
+#define NBE_CONNEXION 2
 
 void error(const char *msg){
     perror(msg);
@@ -159,7 +159,7 @@ int main(int argc, char** argv)
     int nbe_connexions_actuelles;
     nbe_connexions_actuelles = 0;
 
-int time_out = 15*1000; //15 secondes #plus que JC !!
+int time_out = 4*15*1000; //15 secondes #plus que JC !!
 
 
 
@@ -206,7 +206,7 @@ while ((strcmp(message,"/quit\n") != 0)){
         if ((strcmp(message,"/quit\n") != 0)){
           //we write back to the client
           do_send(tab_fd[j].fd,message,MAX_LENGHT_MESSAGE,0);
-          break;
+
         }
         else {
           char *last_message = "Closing connection.\n";
@@ -219,7 +219,9 @@ while ((strcmp(message,"/quit\n") != 0)){
 
     }
     //clean up client socket
-
+else {
+  break;
+}
 
   }
   }
