@@ -5,6 +5,10 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <poll.h>
+
+#define MAX_LENGHT_MESSAGE 1000
+#define NBE_CONNEXION 2
 
 void error(const char *msg){
     perror(msg);
@@ -93,12 +97,26 @@ int do_send(int sockfd, const void *msg, size_t len, int flags){
 }
 
 //Closing
-void do_close(sockfd){
+void do_close(int sockfd){
   int closing = close(sockfd);
   if (closing == -1){
     perror("ERROR closing failed");
     exit(EXIT_FAILURE);
   }
+}
+
+//Pooling
+int do_poll(struct pollfd *tab_fd){
+  int valeur_poll = poll(tab_fd, NBE_CONNEXION+1,-1);
+  if (valeur_poll == -1){
+    perror("ERROR poll failed");
+    exit(EXIT_FAILURE);
+  }
+  if (valeur_poll == 0){
+    perror("ERROR time out");
+    exit(EXIT_FAILURE);
+  }
+  return(valeur_poll);
 }
 
 
@@ -123,28 +141,70 @@ int main(int argc, char** argv)
     //Binding
     do_bind(socket_server,(struct sockaddr *)&saddr_in,sizeof(saddr_in));
 
+
+    //Creation of the pollfd structure
+    struct pollfd tab_fd[NBE_CONNEXION+1];
+    memset(tab_fd,0,sizeof(tab_fd));
+    //Initialisation of the structure
+    tab_fd[0].fd=socket_server;
+    tab_fd[0].events=POLLIN;
+    for (int i=0;i<NBE_CONNEXION;i++){
+      tab_fd[i].events=POLLIN;
+    }
     //Listening
     do_listen(socket_server,SOMAXCONN);
 
-    //accept connection from client
-    int sock_client;
-    socklen_t taille = sizeof(saddr_in);
-    socklen_t* addrlen = &taille;
-    sock_client = do_accept(socket_server,(struct sockaddr *)&saddr_in,addrlen);
+    int current_connection=0;
 
-    char *message = malloc(sizeof(char)*40);
+    for (;;) {
 
-    while ((strcmp(message,"/quit\n") != 0)){ //As long as the client doesn't send "/quit", the sockets don't close.
-      //read what the client has to say
-      do_recv(sock_client,message,sizeof(message),0);
-      printf("The client has sent you : %s\n",message);
+    //Polling
+    do_poll(tab_fd);
 
-      //we write back to the client
-      do_send(sock_client,message,sizeof(message),0);
+    for(int i=0;i<NBE_CONNEXION;i++) {
+      if (tab_fd[i].revents==POLLIN){
+        if (i==0){
+        socklen_t taille = sizeof(saddr_in);
+        socklen_t* addrlen = &taille;
+        int sock_client = do_accept(socket_server,(struct sockaddr *)&saddr_in,addrlen);
+        current_connection+=1;
+        for (int j=0;i<NBE_CONNEXION;i++){
+          if (tab_fd[i].fd==0){
+            tab_fd[i].fd=sock_client;
+            printf("Connection with client n°%d\n",i);
+            fflush(stdout);
+            break;
+          }
+        }
+        if (current_connection==NBE_CONNEXION+1){
+          char *error = "Too many clients. Come back later\n";
+          do_send(sock_client,error,MAX_LENGHT_MESSAGE,0);
+          current_connection-=1;
+          close(sock_client);
+        }
+      }
+      else {
+        char *message = malloc(MAX_LENGHT_MESSAGE);
+          do_recv(tab_fd[i].fd,message,MAX_LENGHT_MESSAGE,0);
+          printf("The client n°%d has sent you : %s\n",i,message);
+          if ((strcmp(message,"/quit\n") != 0)){
+            //we write back to the client
+            do_send(tab_fd[i].fd,message,MAX_LENGHT_MESSAGE,0);
+          }
+          else {
+            char *last_message = "Closing connection.\n";
+            do_send(tab_fd[i].fd,last_message,MAX_LENGHT_MESSAGE,0);
+            printf("Closing client n°%d connection.\n",i);
+            do_close(tab_fd[i].fd);
+            current_connection-=1;
+            printf("conncetion %d\n",current_connection);
+            tab_fd[i].fd=0;
+          }
+        }
+      }
     }
+} //fin boucle infinie
 
-    //clean up client socket
-    do_close(sock_client);
 
     //clean up server socket
     do_close(socket_server);
