@@ -8,7 +8,7 @@
 #include <poll.h>
 
 #define MAX_LENGHT_MESSAGE 1000
-#define NBE_CONNEXION 2
+#define NBE_CONNEXION 20
 
 void error(const char *msg){
     perror(msg);
@@ -168,7 +168,7 @@ int main(int argc, char** argv)
         socklen_t* addrlen = &taille;
         int sock_client = do_accept(socket_server,(struct sockaddr *)&saddr_in,addrlen);
         current_connection+=1;
-        for (int j=0;i<NBE_CONNEXION;i++){
+        for (int j=0;i<NBE_CONNEXION+1;i++){
           if (tab_fd[i].fd==0){
             tab_fd[i].fd=sock_client;
             printf("Connection with client n°%d\n",i);
