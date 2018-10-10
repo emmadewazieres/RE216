@@ -8,6 +8,8 @@
 #include<netinet/in.h>
 #include<fcntl.h>
 
+#define MAX_LENGHT_MESSAGE 1000
+
 //Creation of the socket
 int do_socket(){
   int sockfd = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
@@ -31,9 +33,9 @@ void do_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen){
 
 //Get what the client has to say
 char *readline(){
-  char *message = malloc(sizeof(char)*40);
+  char *message = malloc(MAX_LENGHT_MESSAGE);
   printf("What's up ?\n");
-  fgets(message,40,stdin);
+  fgets(message,MAX_LENGHT_MESSAGE,stdin);
   return(message);
 }
 
@@ -88,18 +90,18 @@ int main(int argc,char** argv)
     do_connect(socket,(struct sockaddr *)&sock_host, sizeof(sock_host));
 
     //Getting user input
-    char *text = malloc(sizeof(char)*40);
+    char *text = malloc(MAX_LENGHT_MESSAGE);
 
     while ((strcmp(text,"/quit\n") != 0)){
       text = readline();
 
       //Sending the message to the server
-      int sending = do_send(socket,text,sizeof(text),0);
+      int sending = do_send(socket,text,MAX_LENGHT_MESSAGE,0);
 
       //Answer from the server
-      char *message = malloc(sizeof(char)*40);
-      do_recv(socket,message, sizeof(message),0);
-      printf("The server has answered you : %s\n",message);
+      char *message = malloc(MAX_LENGHT_MESSAGE);
+      do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
+      printf("The server has told you : %s\n",message);
 
     }
 

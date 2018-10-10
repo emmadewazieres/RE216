@@ -8,7 +8,7 @@
 #include <poll.h>
 
 #define MAX_LENGHT_MESSAGE 1000
-#define NBE_CONNEXION 20
+#define NUMBER_OF_CONNECTION 2
 
 void error(const char *msg){
     perror(msg);
@@ -107,7 +107,7 @@ void do_close(int sockfd){
 
 //Pooling
 int do_poll(struct pollfd *tab_fd){
-  int valeur_poll = poll(tab_fd, NBE_CONNEXION+1,-1);
+  int valeur_poll = poll(tab_fd, NUMBER_OF_CONNECTION+1,-1);
   if (valeur_poll == -1){
     perror("ERROR poll failed");
     exit(EXIT_FAILURE);
@@ -143,12 +143,12 @@ int main(int argc, char** argv)
 
 
     //Creation of the pollfd structure
-    struct pollfd tab_fd[NBE_CONNEXION+1];
+    struct pollfd tab_fd[NUMBER_OF_CONNECTION+1];
     memset(tab_fd,0,sizeof(tab_fd));
     //Initialisation of the structure
     tab_fd[0].fd=socket_server;
     tab_fd[0].events=POLLIN;
-    for (int i=0;i<NBE_CONNEXION;i++){
+    for (int i=0;i<=NUMBER_OF_CONNECTION;i++){
       tab_fd[i].events=POLLIN;
     }
     //Listening
@@ -161,26 +161,26 @@ int main(int argc, char** argv)
     //Polling
     do_poll(tab_fd);
 
-    for(int i=0;i<NBE_CONNEXION;i++) {
+    for(int i=0;i<=NUMBER_OF_CONNECTION+1;i++) {
       if (tab_fd[i].revents==POLLIN){
         if (i==0){
         socklen_t taille = sizeof(saddr_in);
         socklen_t* addrlen = &taille;
         int sock_client = do_accept(socket_server,(struct sockaddr *)&saddr_in,addrlen);
         current_connection+=1;
-        for (int j=0;i<NBE_CONNEXION+1;i++){
+        for (int j=0;i<=NUMBER_OF_CONNECTION+1;i++){
           if (tab_fd[i].fd==0){
             tab_fd[i].fd=sock_client;
-            printf("Connection with client n°%d\n",i);
+            printf("Connection with client n°%d. %d current connection(s).\n",i,current_connection);
             fflush(stdout);
             break;
           }
         }
-        if (current_connection==NBE_CONNEXION+1){
-          char *error = "Too many clients. Come back later\n";
+        if (current_connection==NUMBER_OF_CONNECTION+1){
+          char *error = "Too many clients, connection failed. Come back later\n";
           do_send(sock_client,error,MAX_LENGHT_MESSAGE,0);
-          current_connection-=1;
           close(sock_client);
+          current_connection-=1;
         }
       }
       else {
@@ -192,12 +192,11 @@ int main(int argc, char** argv)
             do_send(tab_fd[i].fd,message,MAX_LENGHT_MESSAGE,0);
           }
           else {
+            current_connection-=1;
             char *last_message = "Closing connection.\n";
             do_send(tab_fd[i].fd,last_message,MAX_LENGHT_MESSAGE,0);
-            printf("Closing client n°%d connection.\n",i);
+            printf("Closing client n°%d connection.%d current connection(s).\n",i,current_connection);
             do_close(tab_fd[i].fd);
-            current_connection-=1;
-            printf("conncetion %d\n",current_connection);
             tab_fd[i].fd=0;
           }
         }
