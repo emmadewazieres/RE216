@@ -34,7 +34,6 @@ void do_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen){
 //Get what the client has to say
 char *readline(){
   char *message = malloc(MAX_LENGHT_MESSAGE);
-  printf("What's up ?\n");
   fgets(message,MAX_LENGHT_MESSAGE,stdin);
   return(message);
 }
@@ -49,6 +48,7 @@ int do_send(int sockfd, const void *msg, size_t len, int flags){
  }
  if (sending != len){
  printf("The message has not been fully transmitted \n");
+ fflush(stdout);
  }
  return(sending);
 }
@@ -62,6 +62,7 @@ int do_recv(int sockfd, void *buf, int len, unsigned int flags){
   }
   if (reception != len){
     printf("The message has not been fully transmitted \n");
+    fflush(stdout);
   }
   return (reception);
 }
@@ -89,20 +90,33 @@ int main(int argc,char** argv)
     //Connection to the server
     do_connect(socket,(struct sockaddr *)&sock_host, sizeof(sock_host));
 
-    //Getting user input
+    //Chatting with the server
     char *text = malloc(MAX_LENGHT_MESSAGE);
+    char *message = malloc(MAX_LENGHT_MESSAGE);
 
-    while ((strcmp(text,"/quit\n") != 0)){
+    while (strncmp(message,"Welcome",7)!=0){
+      do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
+      printf("The server has told you : %s\n",message);
+      fflush(stdout);
+      if (strncmp(message,"Welcome",7)!=0){
+        text=readline();
+        do_send(socket,text,MAX_LENGHT_MESSAGE,0);
+      }
+    }
+
+    while ((strcmp(text,"/quit\n") != 0)&&(strcmp(message,"Too many clients, connection failed. Come back later\n")!=0)){
+      //Getting user input
+      printf("What's up ?\n");
+      fflush(stdout);
       text = readline();
 
       //Sending the message to the server
-      int sending = do_send(socket,text,MAX_LENGHT_MESSAGE,0);
+      do_send(socket,text,MAX_LENGHT_MESSAGE,0);
 
       //Answer from the server
-      char *message = malloc(MAX_LENGHT_MESSAGE);
       do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
       printf("The server has told you : %s\n",message);
-
+      fflush(stdout);
     }
 
     return 0;
