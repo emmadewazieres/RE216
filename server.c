@@ -169,7 +169,7 @@ struct client *delete_client(struct client *client_list,int socket_fd){
   while (ptmp->next != NULL){
     if (ptmp->socket_fd==socket_fd){
       tmp->next=ptmp->next;
-      free(tmp);
+      free(ptmp);
       return(client_list);
     }
     tmp=ptmp;
@@ -192,6 +192,22 @@ struct client *find_specific_client(struct client *client_list, int socket_numbe
     tmp = tmp->next;
   }
   return tmp;
+}
+
+void who(struct client *client_list,int socket_question,int current_connection){
+  if (client_list==NULL){
+    perror("ERROR who function");
+    exit(EXIT_FAILURE);
+  }
+  struct client *tmp;
+  tmp = client_list;
+  int i=1;
+  char *client_pseudo = malloc(MAX_LENGHT_MESSAGE);
+  while((tmp->next != NULL)&&(i!=current_connection)){
+    client_pseudo = tmp->pseudo;
+    do_send(socket_question,client_pseudo,MAX_LENGHT_MESSAGE,0);
+    tmp = tmp->next;
+  }
 }
 
 
@@ -250,7 +266,7 @@ int main(int argc, char** argv)
           for (int j=0;j<=NUMBER_OF_CONNECTION+1;j++){
             if (tab_fd[j].fd==0){
               tab_fd[j].fd=sock_client;
-              printf("Connection with client n°%d. %d current connection(s).\n",j,current_connection);
+              printf("Connecting with client n°%d. %d current connection(s).\n",j,current_connection);
               fflush(stdout);
               char *hello="Hello client !\n";
               do_send(tab_fd[j].fd,hello,MAX_LENGHT_MESSAGE,0);
@@ -286,6 +302,8 @@ int main(int argc, char** argv)
               printf("Le pseudo du client n°%d est : %s \n",i,current_client->pseudo);
             }
             else {
+              char *realpseudo=message+6; //on blègue le /nick pour le mettre dans la liste
+              current_client->pseudo=realpseudo;
               char *change = "Your nickname has been updated.\n";
               do_send(tab_fd[i].fd,change,MAX_LENGHT_MESSAGE,0);
             }
@@ -293,6 +311,7 @@ int main(int argc, char** argv)
 
 
             else if ((strcmp(message,"/quit\n") == 0)){
+              client_list = delete_client(client_list,tab_fd[i].fd);
               current_connection-=1;
               char *last_message = "Closing connection.\n";
               do_send(tab_fd[i].fd,last_message,MAX_LENGHT_MESSAGE,0);
@@ -302,7 +321,14 @@ int main(int argc, char** argv)
               tab_fd[i].fd=0;
             }
 
-      
+            else if ((strcmp(message,"/who\n") == 0)){
+              char *currentco=malloc(MAX_LENGHT_MESSAGE);
+              sprintf(currentco,"%d",current_connection);
+              do_send(tab_fd[i].fd,currentco,MAX_LENGHT_MESSAGE,0);
+              who(client_list,tab_fd[i].fd,current_connection);
+
+            }
+
             else {
               //we write back to the client
 

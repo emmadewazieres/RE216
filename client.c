@@ -103,6 +103,13 @@ int main(int argc,char** argv)
     while (strncmp(text,"/nick ",6)!=0){
       printf("Please logon with /nick <your pseudo>\n");
       text=readline();
+      if (strcmp(text,"/quit\n") == 0){
+
+        do_send(socket,text,MAX_LENGHT_MESSAGE,0);
+        do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
+        printf("The server has told you : %s",message);
+        return(0);
+      }
     }
     do_send(socket,text,MAX_LENGHT_MESSAGE,0);
     do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
@@ -112,15 +119,24 @@ int main(int argc,char** argv)
 
         //Getting user input
         text = readline();
-
-        //Sending the message to the server
         do_send(socket,text,MAX_LENGHT_MESSAGE,0);
 
+        if (strcmp(text,"/who\n")==0){
 
-        do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
-        printf("The server has told you : %s\n",message);
-        fflush(stdout);
-
+          char *currentco=malloc(MAX_LENGHT_MESSAGE);
+          do_recv(socket,currentco, MAX_LENGHT_MESSAGE,0);
+          int current_connection=atoi(currentco);
+          for (int i=0;i<current_connection;i++){
+            do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
+            printf("The server has told you : %s\n",message);
+            fflush(stdout);
+          }
+        }
+        else {
+          do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
+          printf("The server has told you : %s\n",message);
+          fflush(stdout);
+        }
       }
 
 
