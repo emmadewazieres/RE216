@@ -194,7 +194,20 @@ struct client *find_specific_client(struct client *client_list, int socket_numbe
   return tmp;
 }
 
-
+void who(struct client *client_list,int socket_question){
+  if (client_list==NULL){
+    perror("ERROR who function");
+    exit(EXIT_FAILURE);
+  }
+  struct client *tmp;
+  tmp = client_list;
+  char *client_pseudo = malloc(MAX_LENGHT_MESSAGE);
+  while(tmp->next != NULL){
+    client_pseudo = tmp->pseudo;
+    do_send(socket_question,client_pseudo,MAX_LENGHT_MESSAGE,0);
+    tmp = tmp->next;
+  }
+}
 
 int main(int argc, char** argv)
 {
@@ -301,6 +314,10 @@ int main(int argc, char** argv)
               fflush(stdout);
               do_close(tab_fd[i].fd);
               tab_fd[i].fd=0;
+            }
+
+            else if ((strcmp(message,"/who\n") == 0)){
+              who(client_list,tab_fd[i].fd);
             }
 
 
