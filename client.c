@@ -67,15 +67,6 @@ int do_recv(int sockfd, void *buf, int len, unsigned int flags){
   return (reception);
 }
 
-//Closing
-void do_close(int sockfd){
-  int closing = close(sockfd);
-  if (closing == -1){
-    perror("ERROR closing failed");
-    exit(EXIT_FAILURE);
-  }
-}
-
 
 int main(int argc,char** argv)
 {
@@ -117,9 +108,8 @@ int main(int argc,char** argv)
         do_send(socket,text,MAX_LENGHT_MESSAGE,0);
         do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
         printf("The server has told you : %s",message);
-        exit(0);
+        return(0);
       }
-
     }
     do_send(socket,text,MAX_LENGHT_MESSAGE,0);
     do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
@@ -129,15 +119,24 @@ int main(int argc,char** argv)
 
         //Getting user input
         text = readline();
-
-        //Sending the message to the server
         do_send(socket,text,MAX_LENGHT_MESSAGE,0);
 
+        if (strcmp(text,"/who\n")==0){
 
-        do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
-        printf("The server has told you : %s\n",message);
-        fflush(stdout);
-
+          char *currentco=malloc(MAX_LENGHT_MESSAGE);
+          do_recv(socket,currentco, MAX_LENGHT_MESSAGE,0);
+          int current_connection=atoi(currentco);
+          for (int i=0;i<current_connection;i++){
+            do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
+            printf("The server has told you : %s\n",message);
+            fflush(stdout);
+          }
+        }
+        else {
+          do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
+          printf("The server has told you : %s\n",message);
+          fflush(stdout);
+        }
       }
 
 
