@@ -140,23 +140,18 @@ struct client* client_list_init(){
   return client_list_init;
 }
 
+
 //Adding a client
-struct client* add_client(struct client* client_list,char *pseudo,int socket_number,int socket_fd,char *IP_address,int port_number){
+struct client* add_client(struct client* client_list){
   struct client *new_client;
   new_client=malloc(sizeof(*new_client));
   if (new_client==NULL){
     perror("ERROR new client not created");
     exit(EXIT_FAILURE);
   }
-  new_client->pseudo=pseudo;
-  new_client->socket_number=socket_number;
-  new_client->socket_fd=socket_fd;
-  new_client->IP_address=IP_address;
-  new_client->port_number=port_number;
   new_client->next=client_list;
   return new_client;
 }
-
 struct client *delete_client(struct client *client_list,int socket_fd){
   if (client_list==NULL){
     perror("ERROR deleting client");
@@ -183,6 +178,23 @@ struct client *delete_client(struct client *client_list,int socket_fd){
 return client_list;
 }
 
+struct client *find_specific_client(struct client *client_list, int socket_number){
+  if (client_list==NULL){
+    perror("ERROR finding client");
+    exit(EXIT_FAILURE);
+  }
+  struct client *tmp;
+  tmp = client_list;
+  while(tmp->next != NULL){
+    if (tmp->socket_number == socket_number){
+      return tmp;
+    }
+    tmp = tmp->next;
+  }
+  return tmp;
+}
+
+
 int main(int argc, char** argv)
 {
 
@@ -200,6 +212,10 @@ int main(int argc, char** argv)
     //Initialisation of the servor
     struct sockaddr_in saddr_in;
     saddr_in = init_serv_addr(argv[1]);
+
+    // Initialisation of client list (chained list)
+    struct client* client_list = client_list_init();
+    struct client* current_client;
 
     //Binding
     do_bind(socket_server,(struct sockaddr *)&saddr_in,sizeof(saddr_in));
@@ -227,54 +243,76 @@ int main(int argc, char** argv)
     for(int i=0;i<=NUMBER_OF_CONNECTION+1;i++) {
       if (tab_fd[i].revents==POLLIN){
         if (i==0){
-        socklen_t taille = sizeof(saddr_in);
-        socklen_t* addrlen = &taille;
-        int sock_client = do_accept(socket_server,(struct sockaddr *)&saddr_in,addrlen);
-        current_connection+=1;
-        for (int j=0;i<=NUMBER_OF_CONNECTION+1;i++){
-          if (tab_fd[i].fd==0){
-            tab_fd[i].fd=sock_client;
-            printf("Connection with client n°%d. %d current connection(s).\n",i,current_connection);
-            fflush(stdout);
-            char *message = malloc(MAX_LENGHT_MESSAGE);
-            while (strncmp(message,"/nick",5)!=0){
-              char *text = "Please logon with /nick <your pseudo>\n";
-              do_send(tab_fd[i].fd,text,MAX_LENGHT_MESSAGE,0);
-              do_recv(tab_fd[i].fd,message,MAX_LENGHT_MESSAGE,0);
-              printf("the client has sent : %s",message);
+          socklen_t taille = sizeof(saddr_in);
+          socklen_t* addrlen = &taille;
+          int sock_client = do_accept(socket_server,(struct sockaddr *)&saddr_in,addrlen);
+          current_connection+=1;
+          for (int j=0;j<=NUMBER_OF_CONNECTION+1;j++){
+            if (tab_fd[j].fd==0){
+              tab_fd[j].fd=sock_client;
+              printf("Connection with client n°%d. %d current connection(s).\n",j,current_connection);
+              fflush(stdout);
+              char *hello="Hello client !\n";
+              do_send(tab_fd[j].fd,hello,MAX_LENGHT_MESSAGE,0);
+              client_list=add_client(client_list);
+              client_list->pseudo = NULL;
+              client_list->socket_number = sock_client;
+              client_list->socket_fd = j;
+              break;
             }
-            char *welcome="Welcome on the chat";
-            do_send(tab_fd[i].fd,welcome,MAX_LENGHT_MESSAGE,0);
-            break;
           }
-        }
-        if (current_connection==NUMBER_OF_CONNECTION+1){
-          int supp = sock_client;
-          char *error = "Too many clients, connection failed. Come back later\n";
-          do_send(supp,error,MAX_LENGHT_MESSAGE,0);
-          do_close(supp);
-          current_connection-=1;
-        }
-      }
-      else {
-          char *msg = malloc(MAX_LENGHT_MESSAGE);
-          do_recv(tab_fd[i].fd,msg,MAX_LENGHT_MESSAGE,0);
-          printf("The client n°%d has sent you : %s\n",i,msg);
-          fflush(stdout);
-          if ((strcmp(msg,"/quit\n") != 0)){
-            //we write back to the client
-            do_send(tab_fd[i].fd,msg,MAX_LENGHT_MESSAGE,0);
-            free(msg);
-          }
-          else {
+          if (current_connection==NUMBER_OF_CONNECTION+1){
+            int supp = sock_client;
+            char *error = "Too many clients, connection failed. Come back later\n";
+            do_send(supp,error,MAX_LENGHT_MESSAGE,0);
+            do_close(supp);
             current_connection-=1;
-            char *last_message = "Closing connection.\n";
-            do_send(tab_fd[i].fd,last_message,MAX_LENGHT_MESSAGE,0);
-            printf("Closing client n°%d connection.%d current connection(s).\n",i,current_connection);
-            fflush(stdout);
-            do_close(tab_fd[i].fd);
-            tab_fd[i].fd=0;
           }
+        }
+      else {
+          current_client=find_specific_client(client_list,tab_fd[i].fd);
+          char *message = malloc(MAX_LENGHT_MESSAGE);
+          do_recv(tab_fd[i].fd,message,MAX_LENGHT_MESSAGE,0);
+
+
+           if (strncmp(message,"/nick ",6)==0){
+             if (current_client->pseudo==NULL){
+
+
+             char *welcome = "Welcome on the chat !\n";
+             do_send(tab_fd[i].fd,welcome,MAX_LENGHT_MESSAGE,0);
+              char *realpseudo=message+6; //on blègue le /nick pour le mettre dans la liste
+              current_client->pseudo=realpseudo;
+              printf("Le pseudo du client n°%d est : %s \n",i,current_client->pseudo);
+            }
+            else {
+              char *change = "Your nickname has been updated.\n";
+              do_send(tab_fd[i].fd,change,MAX_LENGHT_MESSAGE,0);
+            }
+            }
+
+
+            else if ((strcmp(message,"/quit\n") == 0)){
+              current_connection-=1;
+              char *last_message = "Closing connection.\n";
+              do_send(tab_fd[i].fd,last_message,MAX_LENGHT_MESSAGE,0);
+              printf("Closing client n°%d connection.%d current connection(s).\n",i,current_connection);
+              fflush(stdout);
+              do_close(tab_fd[i].fd);
+              tab_fd[i].fd=0;
+            }
+
+      
+            else {
+              //we write back to the client
+
+              do_send(tab_fd[i].fd,message,MAX_LENGHT_MESSAGE,0);
+              printf("The client n°%d has sent you : %s\n",i,message);
+              fflush(stdout);
+
+            }
+
+
         }
       }
     }

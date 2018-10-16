@@ -94,30 +94,35 @@ int main(int argc,char** argv)
     char *text = malloc(MAX_LENGHT_MESSAGE);
     char *message = malloc(MAX_LENGHT_MESSAGE);
 
-    while (strncmp(message,"Welcome",7)!=0){
-      do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
-      printf("The server has told you : %s\n",message);
-      fflush(stdout);
-      if (strncmp(message,"Welcome",7)!=0){
-        text=readline();
+    do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
+    printf("The server has told you : %s",message);
+
+    if (strcmp(message,"Too many clients, connection failed. Come back later\n")==0){
+      return 0;
+    }
+    while (strncmp(text,"/nick ",6)!=0){
+      printf("Please logon with /nick <your pseudo>\n");
+      text=readline();
+    }
+    do_send(socket,text,MAX_LENGHT_MESSAGE,0);
+    do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
+    printf("The server has told you : %s",message);
+
+    while (strcmp(text,"/quit\n") != 0){
+
+        //Getting user input
+        text = readline();
+
+        //Sending the message to the server
         do_send(socket,text,MAX_LENGHT_MESSAGE,0);
+
+
+        do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
+        printf("The server has told you : %s\n",message);
+        fflush(stdout);
+
       }
-    }
 
-    while ((strcmp(text,"/quit\n") != 0)&&(strcmp(message,"Too many clients, connection failed. Come back later\n")!=0)){
-      //Getting user input
-      printf("What's up ?\n");
-      fflush(stdout);
-      text = readline();
-
-      //Sending the message to the server
-      do_send(socket,text,MAX_LENGHT_MESSAGE,0);
-
-      //Answer from the server
-      do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
-      printf("The server has told you : %s\n",message);
-      fflush(stdout);
-    }
 
     return 0;
 
