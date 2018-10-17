@@ -7,6 +7,7 @@
 #include <netdb.h>
 #include<netinet/in.h>
 #include<fcntl.h>
+#include <time.h>
 
 #define MAX_LENGHT_MESSAGE 1000
 
@@ -84,11 +85,38 @@ int main(int argc,char** argv)
     sock_host.sin_port = htons(atoi(argv[2]));
     inet_aton(argv[1], &sock_host.sin_addr);
 
+    printf("sock_host.sin_port %d\n",sock_host.sin_port);
+    printf("%s\n", argv[1]);
+
+    //char *some_addr;
+    //some_addr = inet_ntoa(sock_host.sin_addr);
+    //printf("adresse IP %s\n",some_addr);
+    printf("IP %d\n",inet_ntoa((struct sockaddr*)&sock_host.sin_addr));
     //Creation of the socket
     int socket = do_socket();
 
     //Connection to the server
     do_connect(socket,(struct sockaddr *)&sock_host, sizeof(sock_host));
+
+    // Sending information at the RE216_SERVER
+      // IP
+    char *IP_address = "/IP 192.0.0.0 ";
+    do_send(socket,IP_address,MAX_LENGHT_MESSAGE,0);
+      // port
+    char *port = malloc(MAX_LENGHT_MESSAGE);
+    sprintf(port,"/port %d",sock_host.sin_port);
+    printf("jkfhk %s\n",port);
+    do_send(socket,port,MAX_LENGHT_MESSAGE,0);
+      // date
+    struct tm* date;
+    time_t timer;
+    time(&timer);
+    date = localtime(&timer);
+    char *date_s = malloc(MAX_LENGHT_MESSAGE);
+
+    sprintf(date_s,"/date le %d/%d/%d à %dh %dm %ds \n", date->tm_mday,date->tm_mon + 1, date->tm_year + 1900, date->tm_hour, date->tm_min, date->tm_sec);
+    printf("%s\n",date_s);
+    do_send(socket,date_s,MAX_LENGHT_MESSAGE,0);
 
     //Chatting with the server
     char *text = malloc(MAX_LENGHT_MESSAGE);
@@ -126,9 +154,10 @@ int main(int argc,char** argv)
           char *currentco=malloc(MAX_LENGHT_MESSAGE);
           do_recv(socket,currentco, MAX_LENGHT_MESSAGE,0);
           int current_connection=atoi(currentco);
-          for (int i=0;i<current_connection;i++){
+          printf(" Online user are :\n");
+          for (int i=0;i<current_connection +1;i++){
             do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
-            printf("The server has told you : %s\n",message);
+            printf(" - %s\n",message);
             fflush(stdout);
           }
         }

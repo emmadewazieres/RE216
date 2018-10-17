@@ -126,6 +126,7 @@ struct client {
   int socket_fd;
   char *IP_address;
   int port_number;
+  char *date;
   struct client *next;
 };
 
@@ -255,8 +256,7 @@ void who(struct client *client_list,int socket_question,int current_connection){
   tmp = client_list;
   int i=1;
   char *client_pseudo = malloc(MAX_LENGHT_MESSAGE);
-  char *phrase = "users online :";
-  do_send(socket_question,phrase,MAX_LENGHT_MESSAGE,0);
+
   while((tmp->next != NULL)&&(i!=current_connection)){
     client_pseudo = tmp->pseudo;
     do_send(socket_question,client_pseudo,MAX_LENGHT_MESSAGE,0);
@@ -408,6 +408,29 @@ int main(int argc, char** argv)
               do_send(tab_fd[i].fd,currentco,MAX_LENGHT_MESSAGE,0);
               who(client_list,tab_fd[i].fd,current_connection);
 
+            }
+
+            else if (strncmp(message,"/IP ",4)==0){
+              printf("%s\n",message);
+              char *IP = message + 4;
+              current_client->IP_address = IP;
+              printf("%s\n",current_client->IP_address);
+            }
+
+            else if (strncmp(message,"/port ",6)==0){
+              printf("%s\n",message);
+              char *port = message + 6;
+              int port_n = atoi(port);
+              current_client->port_number = port_n;
+              printf("%d\n",current_client->port_number);
+            }
+
+            else if (strncmp(message,"/date ",6)==0){
+              printf("%s\n",message);
+              char *date = message + 6;
+
+              current_client->date = date;
+              printf("%s\n",current_client->date);
             }
 
             else {
