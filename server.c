@@ -157,22 +157,29 @@ struct client *delete_client(struct client *client_list,int socket_fd){
     perror("ERROR deleting client");
     exit(EXIT_FAILURE);
   }
+  printf("rentré\n" );
   struct client* tmp;
   struct client* ptmp;
   tmp=client_list;
-  if (tmp->socket_fd==socket_fd){
+  if (tmp->socket_number==socket_fd){
+    printf("test début\n");
+
     client_list=tmp->next;
     free(tmp);
     return client_list;
   }
   ptmp=tmp->next;
   while (ptmp != NULL){
-    if (ptmp->next == NULL && ptmp->socket_fd == socket_fd){
+    printf("rentré dans le while\n" );
+    if (ptmp->next == NULL && ptmp->socket_number == socket_fd){
       tmp->next = NULL;
+      printf("test fni\n");
       return(client_list);
     }
-    if (ptmp->socket_fd==socket_fd){
+    if (ptmp->socket_number==socket_fd){
       tmp->next=ptmp->next;
+      printf("test milieu\n");
+
       free(ptmp);
       return(client_list);
     }
@@ -198,6 +205,47 @@ struct client *find_specific_client(struct client *client_list, int socket_numbe
   return tmp;
 }
 
+int check_presence_pseudo(struct client *client_list, char *pseudo){
+  if (client_list==NULL){
+    perror("ERROR finding client");
+    exit(EXIT_FAILURE);
+  }
+  struct client *tmp;
+  tmp = client_list;
+
+  while(tmp->next != NULL){
+      if (tmp->pseudo == pseudo){
+        return(1);
+      }
+      tmp = tmp->next;
+    }
+    if (tmp->next == NULL && tmp->pseudo == pseudo){
+        return (1);
+      }
+  return(0);
+
+}
+
+struct client *find_specific_client_pseudo(struct client *client_list, char *pseudo){
+  if (client_list==NULL){
+    perror("ERROR finding client");
+    exit(EXIT_FAILURE);
+  }
+  struct client *tmp;
+  tmp = client_list;
+
+  while(tmp->next != NULL){
+    if (tmp->pseudo == pseudo){
+      return tmp;
+    }
+    tmp = tmp->next;
+  }
+  if (tmp->next == NULL && tmp->pseudo == pseudo){
+      return tmp;
+    }
+
+}
+
 void who(struct client *client_list,int socket_question,int current_connection){
   if (client_list==NULL){
     perror("ERROR who function");
@@ -207,6 +255,8 @@ void who(struct client *client_list,int socket_question,int current_connection){
   tmp = client_list;
   int i=1;
   char *client_pseudo = malloc(MAX_LENGHT_MESSAGE);
+  char *phrase = "users online :";
+  do_send(socket_question,phrase,MAX_LENGHT_MESSAGE,0);
   while((tmp->next != NULL)&&(i!=current_connection)){
     client_pseudo = tmp->pseudo;
     do_send(socket_question,client_pseudo,MAX_LENGHT_MESSAGE,0);
@@ -214,8 +264,34 @@ void who(struct client *client_list,int socket_question,int current_connection){
   }
 }
 
+/* void whois(struct client *client_list,int socket_question,char *pseudo){
+  if (client_list==NULL){
+    perror("ERROR who function");
+    exit(EXIT_FAILURE);
+  }
 
+  int check = check_presence_pseudo(client_list,pseudo);
+  if (check == 0){
+    char *phrase = "this user doesn't exist:";
+    do_send(socket_question,phrase,MAX_LENGHT_MESSAGE,0);
+  }
+  else{
 
+    struct client *client_pseudo;
+    client_pseudo = find_specific_client_pseudo(client_list,pseudo);
+
+    char *client_pseudo = pseudo;
+    char *address_IP = client_pseudo->IP_address;
+    char *port = client_pseudo->port_number;
+  //  char *date= malloc(MAX_LENGHT_MESSAGE); a ajouter a la structure client
+
+    do_send(socket_question,client_pseudo,MAX_LENGHT_MESSAGE,0);
+    do_send(socket_question,address_IP,MAX_LENGHT_MESSAGE,0);
+    do_send(socket_question,port,MAX_LENGHT_MESSAGE,0);
+  //  do_send(socket_question,date,MAX_LENGHT_MESSAGE,0);
+  }
+}
+*/
 int main(int argc, char** argv)
 {
 
