@@ -7,6 +7,7 @@
 #include <netdb.h>
 #include<netinet/in.h>
 #include<fcntl.h>
+#include<time.h>
 
 #define MAX_LENGHT_MESSAGE 1000
 
@@ -126,11 +127,17 @@ int main(int argc,char** argv)
           char *currentco=malloc(MAX_LENGHT_MESSAGE);
           do_recv(socket,currentco, MAX_LENGHT_MESSAGE,0);
           int current_connection=atoi(currentco);
+          printf("Online users are :\n");
           for (int i=0;i<current_connection;i++){
             do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
-            printf("The server has told you : %s\n",message);
+            printf("- %s\n",message);
             fflush(stdout);
           }
+        }
+        else if (strncmp(text,"/whois \n",7) == 0){
+          do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
+
+          printf("%s",message);
         }
         else {
           do_recv(socket,message, MAX_LENGHT_MESSAGE,0);

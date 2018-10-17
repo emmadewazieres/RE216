@@ -126,6 +126,7 @@ struct client {
   int socket_fd;
   char *IP_address;
   int port_number;
+  char *date;
   struct client *next;
 };
 
@@ -152,6 +153,7 @@ struct client* add_client(struct client* client_list){
   new_client->next=client_list;
   return new_client;
 }
+
 struct client *delete_client(struct client *client_list,int socket_fd){
   if (client_list==NULL){
     perror("ERROR deleting client");
@@ -160,14 +162,18 @@ struct client *delete_client(struct client *client_list,int socket_fd){
   struct client* tmp;
   struct client* ptmp;
   tmp=client_list;
-  if (tmp->socket_fd==socket_fd){
+  if (tmp->socket_number==socket_fd){
     client_list=tmp->next;
     free(tmp);
     return client_list;
   }
   ptmp=tmp->next;
-  while (ptmp->next != NULL){
-    if (ptmp->socket_fd==socket_fd){
+  while (ptmp != NULL){
+    if (ptmp->next == NULL && ptmp->socket_number == socket_fd){
+      tmp->next = NULL;
+      return(client_list);
+    }
+    if (ptmp->socket_number==socket_fd){
       tmp->next=ptmp->next;
       free(ptmp);
       return(client_list);
@@ -177,6 +183,8 @@ struct client *delete_client(struct client *client_list,int socket_fd){
   }
 return client_list;
 }
+
+
 
 struct client *find_specific_client(struct client *client_list, int socket_number){
   if (client_list==NULL){
@@ -194,6 +202,47 @@ struct client *find_specific_client(struct client *client_list, int socket_numbe
   return tmp;
 }
 
+int check_pseudo(struct client *client_list, char *pseudo){
+  if (client_list==NULL){
+    perror("ERROR finding client");
+    exit(EXIT_FAILURE);
+  }
+  struct client *tmp;
+  tmp = client_list;
+  if (strcmp(tmp->pseudo,pseudo)==0){
+      return (1);
+  }
+  tmp = tmp->next;
+  while(tmp->next != NULL){
+      if (strcmp(tmp->pseudo,pseudo)==0){
+        return(1);
+      }
+      tmp = tmp->next;
+    }
+      return(0);
+}
+
+struct client *find_specific_client_pseudo(struct client *client_list, char *pseudo){
+  if (client_list==NULL){
+    perror("ERROR finding client");
+    exit(EXIT_FAILURE);
+  }
+  struct client *tmp;
+  tmp = client_list;
+
+  while(tmp->next != NULL){
+    if (strcmp(tmp->pseudo,pseudo)==0){
+      printf("Je suis passée dans find specific cllient pseudo\n");
+      return tmp;
+    }
+    tmp = tmp->next;
+  }
+  if (tmp->next == NULL && strcmp(tmp->pseudo,pseudo)==0){
+      return tmp;
+    }
+
+}
+
 void who(struct client *client_list,int socket_question,int current_connection){
   if (client_list==NULL){
     perror("ERROR who function");
@@ -201,15 +250,23 @@ void who(struct client *client_list,int socket_question,int current_connection){
   }
   struct client *tmp;
   tmp = client_list;
-  int i=1;
   char *client_pseudo = malloc(MAX_LENGHT_MESSAGE);
-  while((tmp->next != NULL)&&(i!=current_connection)){
+  while(tmp->next != NULL){
     client_pseudo = tmp->pseudo;
     do_send(socket_question,client_pseudo,MAX_LENGHT_MESSAGE,0);
     tmp = tmp->next;
   }
 }
 
+void whois(struct client *client_list, int socket_question){
+  if (client_list==NULL){
+    perror("ERROR whois function");
+    exit(EXIT_FAILURE);
+  }
+  char *message = malloc(MAX_LENGHT_MESSAGE);
+  sprintf(message,"Connected with IP address %s and port number %d\n",client_list->pseudo,client_list->IP_address,client_list->port_number);
+  do_send(socket_question,message,MAX_LENGHT_MESSAGE,0);
+}
 
 int main(int argc, char** argv)
 {
@@ -272,7 +329,7 @@ int main(int argc, char** argv)
               do_send(tab_fd[j].fd,hello,MAX_LENGHT_MESSAGE,0);
               client_list=add_client(client_list);
               client_list->pseudo = NULL;
-              client_list->socket_number = sock_client;
+              client_list->socket_number = tab_fd[j].fd;
               client_list->socket_fd = j;
               break;
             }
@@ -327,6 +384,20 @@ int main(int argc, char** argv)
               do_send(tab_fd[i].fd,currentco,MAX_LENGHT_MESSAGE,0);
               who(client_list,tab_fd[i].fd,current_connection);
 
+            }
+
+            else if ((strncmp(message,"/whois \n",7) == 0)){
+              char *pseudowhois;
+              pseudowhois=message+7;
+              struct client *user;
+              if (check_pseudo(client_list,pseudowhois)==0){
+                char *error ="This user doesn't exist\n";
+                do_send(tab_fd[i].fd,error,MAX_LENGHT_MESSAGE,0);
+              }
+              else {
+              user=find_specific_client_pseudo(client_list,pseudowhois);
+              whois(user,tab_fd[i].fd);
+              }
             }
 
             else {
