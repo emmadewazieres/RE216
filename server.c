@@ -422,6 +422,17 @@ int main(int argc, char** argv)
             }
           }
 
+          else if ((strncmp(message,"/all \n",5) == 0)){
+            char *message_all = message + 5;
+            printf("message_all %s\n",message_all);
+            for(int k=1;k<=current_connection;k++) {
+              if (k != i){
+                do_send(tab_fd[k].fd,message_all,MAX_LENGHT_MESSAGE,0);
+
+              }
+            }
+          }
+
           else {
             do_send(tab_fd[i].fd,message,MAX_LENGHT_MESSAGE,0);
             printf("The client n°%d has sent you : %s",i,message);
