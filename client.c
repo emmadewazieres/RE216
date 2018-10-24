@@ -5,9 +5,10 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
-#include<netinet/in.h>
-#include<fcntl.h>
+#include <netinet/in.h>
+#include <fcntl.h>
 #include <time.h>
+#include <poll.h>
 
 #define MAX_LENGHT_MESSAGE 1000
 
@@ -68,6 +69,20 @@ int do_recv(int sockfd, void *buf, int len, unsigned int flags){
   return (reception);
 }
 
+//Pooling
+int do_poll(struct pollfd *tab_fd){
+  int valeur_poll = poll(tab_fd, 2,-1);
+  if (valeur_poll == -1){
+    perror("ERROR poll failed");
+    exit(EXIT_FAILURE);
+  }
+  if (valeur_poll == 0){
+    perror("ERROR time out");
+    exit(EXIT_FAILURE);
+  }
+  return(valeur_poll);
+}
+
 
 int main(int argc,char** argv)
 {
@@ -85,13 +100,8 @@ int main(int argc,char** argv)
     sock_host.sin_port = htons(atoi(argv[2]));
     inet_aton(argv[1], &sock_host.sin_addr);
 
-    printf("sock_host.sin_port %d\n",sock_host.sin_port);
-    printf("%s\n", argv[1]);
 
-    //char *some_addr;
-    //some_addr = inet_ntoa(sock_host.sin_addr);
-    //printf("adresse IP %s\n",some_addr);
-    printf("IP %d\n",inet_ntoa((struct sockaddr*)&sock_host.sin_addr));
+
     //Creation of the socket
     int socket = do_socket();
 
@@ -100,22 +110,25 @@ int main(int argc,char** argv)
 
     // Sending information at the RE216_SERVER
       // IP
-    char *IP_address = "/IP 192.0.0.0 ";
+
+    char *name_IP = malloc(MAX_LENGHT_MESSAGE);
+    gethostname(name_IP,MAX_LENGHT_MESSAGE);
+    printf(" name_IP %s",name_IP);
+    char *IP_address = malloc(MAX_LENGHT_MESSAGE);
+    sprintf(IP_address,"/IP %s",name_IP);
     do_send(socket,IP_address,MAX_LENGHT_MESSAGE,0);
       // port
     char *port = malloc(MAX_LENGHT_MESSAGE);
     sprintf(port,"/port %d",sock_host.sin_port);
-    printf("jkfhk %s\n",port);
     do_send(socket,port,MAX_LENGHT_MESSAGE,0);
       // date
     struct tm* date;
     time_t timer;
+
     time(&timer);
     date = localtime(&timer);
     char *date_s = malloc(MAX_LENGHT_MESSAGE);
-
-    sprintf(date_s,"/date le %d/%d/%d à %dh %dm %ds \n", date->tm_mday,date->tm_mon + 1, date->tm_year + 1900, date->tm_hour, date->tm_min, date->tm_sec);
-    printf("%s\n",date_s);
+    sprintf(date_s,"/date %d/%d/%d at %dh %dm %ds \n", date->tm_mday,date->tm_mon + 1, date->tm_year + 1900, date->tm_hour, date->tm_min, date->tm_sec);
     do_send(socket,date_s,MAX_LENGHT_MESSAGE,0);
 
     //Chatting with the server
@@ -128,7 +141,8 @@ int main(int argc,char** argv)
     if (strcmp(message,"Too many clients, connection failed. Come back later\n")==0){
       return 0;
     }
-    while (strncmp(text,"/nick ",6)!=0){
+
+    while (strncmp(text,"/nick ",6)!=0){; // && strncmp(message,"Welcome ",7)!=0){
       printf("Please logon with /nick <your pseudo>\n");
       text=readline();
       if (strcmp(text,"/quit\n") == 0){
@@ -139,36 +153,74 @@ int main(int argc,char** argv)
         return(0);
       }
     }
+
     do_send(socket,text,MAX_LENGHT_MESSAGE,0);
     do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
     printf("The server has told you : %s",message);
 
-    while (strcmp(text,"/quit\n") != 0){
+    //Creation of the pollfd structure
+    struct pollfd tab_fd[2];
+    memset(tab_fd,0,sizeof(tab_fd));
 
+    //Initialisation of the structure
+    tab_fd[0].fd=socket;
+    tab_fd[0].events=POLLIN;
+    tab_fd[1].fd=0;
+    tab_fd[1].events=POLLIN;
+
+    for (;;) { //endless loop
+
+      //Polling
+      do_poll(tab_fd);
+
+      if (tab_fd[0].revents==POLLIN){
+        do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
+        printf("The server has told you : %s",message);
+        fflush(stdout);
+      }
+
+      if (tab_fd[1].revents==POLLIN){
+
+
+    //while (strcmp(text,"/quit\n") != 0){
         //Getting user input
         text = readline();
         do_send(socket,text,MAX_LENGHT_MESSAGE,0);
 
         if (strcmp(text,"/who\n")==0){
-
           char *currentco=malloc(MAX_LENGHT_MESSAGE);
           do_recv(socket,currentco, MAX_LENGHT_MESSAGE,0);
           int current_connection=atoi(currentco);
-          printf(" Online user are :\n");
-          for (int i=0;i<current_connection +1;i++){
+          printf("Online users are :\n");
+          for (int i=0;i<current_connection;i++){
             do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
-            printf(" - %s\n",message);
+            printf("- %s",message);
             fflush(stdout);
           }
         }
-        else {
+
+        else if (strncmp(text,"/whois \n",7) == 0){
           do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
-          printf("The server has told you : %s\n",message);
-          fflush(stdout);
+          printf("%s",message);
         }
-      }
 
+        if (strcmp(text,"/quit\n") == 0){
 
+          do_send(socket,text,MAX_LENGHT_MESSAGE,0);
+          do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
+          printf("The server has told you : %s",message);
+          return(0);
+        
+
+        }
+
+      /*  else {
+          do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
+          printf("The server has told you : %s",message);
+          fflush(stdout);
+        }*/
+    //  }
+}
+}
     return 0;
-
 }
