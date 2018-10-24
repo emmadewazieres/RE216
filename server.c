@@ -475,12 +475,14 @@ int main(int argc, char** argv)
               do_send(tab_fd[i].fd,error,MAX_LENGHT_MESSAGE,0);
             }
             else {
-              char *test = "test";
+              char *envoie = chaine_dest_et_msg + lenght_dest_pseudo;
               dest_client=find_specific_client_pseudo(client_list,dest_pseudo);
-              do_send(dest_client->socket_number,test,MAX_LENGHT_MESSAGE,0);
+              do_send(dest_client->socket_number,envoie,MAX_LENGHT_MESSAGE,0);
             }
 
           }
+
+          else if ((strncmp(message,"/create \n",8) == 0)){
 
 
 
