@@ -130,6 +130,15 @@ struct client {
   struct client *next;
 };
 
+//Declatation of the chained list for the salons
+struct salon {
+  char *name;
+  struct client *client_salon;
+  int number_client;
+  struct salon *next;
+};
+
+
 //Initialisation of the chained list
 struct client* client_list_init(){
   struct client *client_list_init;
@@ -139,6 +148,17 @@ struct client* client_list_init(){
     exit(EXIT_FAILURE);
   }
   return client_list_init;
+}
+
+//Initialisation of the salon chained list
+struct salon* salon_list_init(){
+  struct salon *salon_list_init;
+  salon_list_init=malloc(sizeof(*salon_list_init));
+  if (salon_list_init==NULL){
+    perror("ERROR salon chained list");
+    exit(EXIT_FAILURE);
+  }
+  return salon_list_init;
 }
 
 //Adding a client to the chained list
@@ -151,6 +171,18 @@ struct client* add_client(struct client* client_list){
   }
   new_client->next=client_list;
   return new_client;
+}
+
+//Adding a salon to the salon chained list
+struct salon* add_salon(struct salon* salon_list){
+  struct salon *new_salon;
+  new_salon=malloc(sizeof(*new_salon));
+  if (new_salon==NULL){
+    perror("ERROR new salon not created");
+    exit(EXIT_FAILURE);
+  }
+  new_salon->next=salon_list;
+  return new_salon;
 }
 
 //Deleting a client from the chained list
@@ -182,6 +214,37 @@ struct client *delete_client(struct client *client_list,int socket_fd){
     ptmp=ptmp->next;
   }
   return client_list;
+}
+
+//Deleting a salon from the salon chained list
+struct salon *delete_salon(struct salon *salon_list){
+  if (salon_list==NULL){
+    perror("ERROR deleting salon");
+    exit(EXIT_FAILURE);
+  }
+  struct salon* tmp;
+  struct salon* ptmp;
+  tmp=salon_list;
+  if (tmp->number_client==0){
+    salon_list=tmp->next;
+    free(tmp);
+    return salon_list;
+  }
+  ptmp=tmp->next;
+  while (ptmp != NULL){
+    if (ptmp->next == NULL && ptmp->number_client == 0){
+      tmp->next = NULL;
+      return(salon_list);
+    }
+    if (ptmp->number_client==0){
+      tmp->next=ptmp->next;
+      free(ptmp);
+      return(salon_list);
+    }
+    tmp=ptmp;
+    ptmp=ptmp->next;
+  }
+  return salon_list;
 }
 
 //Finding a client with its socket number
@@ -241,6 +304,27 @@ struct client *find_specific_client_pseudo(struct client *client_list, char *pse
     return tmp;
   }
 }
+
+//Finding a salon with its pseudo
+struct salon *find_specific_salon_name(struct salon *salon_list, char *name){
+  if (salon_list==NULL){
+    perror("ERROR finding salon");
+    exit(EXIT_FAILURE);
+  }
+  struct salon *tmp;
+  tmp = salon_list;
+
+  while(tmp->next != NULL){
+    if (strcmp(tmp->name,name)==0){
+      return tmp;
+    }
+    tmp = tmp->next;
+  }
+  if (tmp->next == NULL && strcmp(tmp->name,name)==0){
+    return tmp;
+  }
+}
+
 
 //Sending the users that are connected (that are in the chained list) to a client
 void who(struct client *client_list,int socket_question,int current_connection){
@@ -305,6 +389,9 @@ int main(int argc, char** argv)
   // Initialisation of client list (chained list)
   struct client* client_list = client_list_init();
   struct client* current_client;
+  // Initialisation of salon list (chained list)
+  struct salon* salon_list = salon_list_init();
+
 
   //Binding
   do_bind(socket_server,(struct sockaddr *)&saddr_in,sizeof(saddr_in));
@@ -482,7 +569,19 @@ int main(int argc, char** argv)
 
           }
 
-          else if ((strncmp(message,"/create \n",8) == 0)){
+         else if ((strncmp(message,"/create \n",8) == 0)){
+           char* name = message + 8;
+           printf("name %s\n",name);
+           salon_list=add_salon(salon_list);
+           salon_list->name = name;
+           printf("salon_list->name %s\n",salon_list->name);
+           salon_list->client_salon = client_list_init(salon_list->client_salon);
+           salon_list->client_salon = add_client(salon_list->client_salon);
+           salon_list->client_salon->pseudo = current_client->pseudo;
+           printf("salon_list->client_salon->pseudo %s\n",salon_list->client_salon->pseudo);
+
+         }
+
 
 
 
