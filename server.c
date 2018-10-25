@@ -346,6 +346,11 @@ struct salon *find_specific_salon_name(struct salon *salon_list, char *name){
   }
 }
 
+//Adding client in a specific salons
+void add_client_in_salon(struct salon *salon_list,char *name_salon,struct client *client_to_add){
+  struct salon *asked_salon = find_specific_salon_name(salon_list,name_salon);
+  asked_salon->client_salon = add_client(client_to_add);
+}
 
 //Sending the users that are connected (that are in the chained list) to a client
 void who(struct client *client_list,int socket_question,int current_connection){
@@ -362,6 +367,33 @@ void who(struct client *client_list,int socket_question,int current_connection){
     //printf("longueur %ld\n",strlen(client_pseudo));
     tmp = tmp->next;
   }
+}
+
+//Sending the salons that have been created (that are in the salon chained list) to a client
+void which(struct salon *salon_list,int socket_question){
+  if (salon_list==NULL){
+    perror("ERROR which function");
+    exit(EXIT_FAILURE);
+  }
+  struct salon *tmp;
+  tmp = salon_list;
+  char *salon_name = malloc(MAX_LENGHT_MESSAGE);
+  char *liste_of_salon = malloc(MAX_LENGHT_MESSAGE);
+
+  char *temp = malloc(MAX_LENGHT_MESSAGE);
+  if(tmp->next == NULL){
+    liste_of_salon = "There isn't salon \n";
+    printf("pas de salon\n");
+  }
+  while(tmp->next != NULL){
+    salon_name = tmp->name;
+    sprintf(temp,"- %s \n",salon_name);
+    strcat(liste_of_salon,temp);
+    //printf("longueur %ld\n",strlen(client_pseudo));
+    tmp = tmp->next;
+  }
+
+  do_send(socket_question,liste_of_salon,MAX_LENGHT_MESSAGE,0);
 }
 
 //Sending information about a client to the client that asks for them
@@ -615,7 +647,7 @@ int main(int argc, char** argv)
              char *creation=malloc(MAX_LENGHT_MESSAGE);
              char *short_name =  malloc(MAX_LENGHT_MESSAGE);
              short_name = supp_last_caractere(name);
-             sprintf(creation," salon %s creates \n",short_name);
+             sprintf(creation,"You have created salon %s\n",short_name);
              printf("creation %s\n",creation);
              do_send(tab_fd[i].fd,creation,MAX_LENGHT_MESSAGE,0);
 
@@ -625,10 +657,32 @@ int main(int argc, char** argv)
              char *existence = "This name already exits, choose another one.\n";
              do_send(tab_fd[i].fd,existence,MAX_LENGHT_MESSAGE,0);
              printf("déjà utilisé\n");
-        }
+           }
          }
 
+         else if ((strncmp(message,"/join \n",6) == 0)){
+           char* name_salon = message + 6;
+           printf("name_salon %s\n",name_salon);
+           if(check_name(salon_list,name_salon) != 0){
+             printf("salut\n");
+             add_client_in_salon(salon_list,name_salon,current_client);
+             printf("ici\n");
 
+           }
+           else{
+             char *existence = "This salon doesn't exist.\n";
+             do_send(tab_fd[i].fd,existence,MAX_LENGHT_MESSAGE,0);
+           }
+
+
+         }
+
+         else if ((strncmp(message,"/which\n",7) == 0)){
+           printf("dedans\n");
+
+           which(salon_list,tab_fd[i].fd);
+
+         }
 
 
 
