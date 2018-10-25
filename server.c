@@ -254,6 +254,7 @@ void who(struct client *client_list,int socket_question,int current_connection){
   while(tmp->next != NULL){
     client_pseudo = tmp->pseudo;
     do_send(socket_question,client_pseudo,MAX_LENGHT_MESSAGE,0);
+    //printf("longueur %ld\n",strlen(client_pseudo));
     tmp = tmp->next;
   }
 }
@@ -268,6 +269,20 @@ void whois(struct client *client_list, int socket_question){
   sprintf(message,"Connected since %s with IP address %s and port number %d\n",client_list->date,client_list->IP_address,client_list->port_number);
   do_send(socket_question,message,MAX_LENGHT_MESSAGE,0);
 }
+
+int position_first_space(char *chaine){
+
+  int lenght = strlen(chaine);
+  printf("lenght %d\n",lenght);
+  int compteur = 0;
+  int i = 0;
+    while(chaine[i]!=' ' && i <=lenght ){
+      compteur = compteur +1;
+      i++;
+    }
+    return compteur;
+}
+
 
 int main(int argc, char** argv)
 {
@@ -350,10 +365,14 @@ int main(int argc, char** argv)
           do_recv(tab_fd[i].fd,message,MAX_LENGHT_MESSAGE,0);
 
           if (strncmp(message,"/nick ",6)==0){
+          char *realpseudo=message+6;
+          int length=strlen(realpseudo);
+          printf ("longueur : %i et pseudo : %s\n",length,realpseudo);
+          fflush(stdout);
+          if (current_connection<=1){
             if (current_client->pseudo==NULL){
               char *welcome = "Welcome on the chat !\n";
               do_send(tab_fd[i].fd,welcome,MAX_LENGHT_MESSAGE,0);
-              char *realpseudo=message+6;
               current_client->pseudo=realpseudo;
             }
             else {
@@ -363,7 +382,26 @@ int main(int argc, char** argv)
               do_send(tab_fd[i].fd,change,MAX_LENGHT_MESSAGE,0);
             }
           }
-
+          else {
+          if (check_pseudo(client_list->next,realpseudo)==0){
+              if (current_client->pseudo==NULL){
+                char *welcome = "Welcome on the chat !\n";
+                do_send(tab_fd[i].fd,welcome,MAX_LENGHT_MESSAGE,0);
+                current_client->pseudo=realpseudo;
+              }
+              else {
+                char *realpseudo=message+6;
+                current_client->pseudo=realpseudo;
+                char *change = "Your nickname has been updated.\n";
+                do_send(tab_fd[i].fd,change,MAX_LENGHT_MESSAGE,0);
+              }
+            }
+            else {
+              char *pseudo_error ="This pseudo already exits, choose another one.\n";
+              do_send(tab_fd[i].fd,pseudo_error,MAX_LENGHT_MESSAGE,0);
+            }
+          }
+}
           else if (strncmp(message,"/IP ",4)==0){
             char *IP = message + 4;
             current_client->IP_address = IP;
@@ -411,6 +449,51 @@ int main(int argc, char** argv)
               whois(user,tab_fd[i].fd);
             }
           }
+
+          else if ((strncmp(message,"/all \n",5) == 0)){
+            char *message_all = message + 5;
+            int length = strlen(current_client->pseudo);
+            char *sender = malloc(MAX_LENGHT_MESSAGE);
+            strncpy(sender, current_client->pseudo,length-1);
+            char *all=malloc(MAX_LENGHT_MESSAGE);
+            sprintf(all,"[%s to everyone] : %s\n",sender,message_all);
+            for(int k=1;k<=current_connection;k++) {
+              if (k != i){
+                do_send(tab_fd[k].fd,all,MAX_LENGHT_MESSAGE,0);
+
+              }
+            }
+          }
+
+          else if ((strncmp(message,"/msg \n",5) == 0)){
+            char *pseudo_msg = message + 5;
+
+            int length_pseudo = position_first_space(pseudo_msg);
+            char *dest_pseudo = malloc(MAX_LENGHT_MESSAGE);
+            strncpy(dest_pseudo,pseudo_msg,length_pseudo);
+            dest_pseudo[length_pseudo] = '\n';
+            struct client *dest_client;
+            if (check_pseudo(client_list,dest_pseudo)==0){
+              char *error ="This user doesn't exist\n";
+              do_send(tab_fd[i].fd,error,MAX_LENGHT_MESSAGE,0);
+            }
+            else {
+              char *pseudo_current = malloc(MAX_LENGHT_MESSAGE);
+              int length_current = strlen(current_client->pseudo);
+              strncpy(pseudo_current,current_client->pseudo,length_current-1);
+              char *msg = pseudo_msg + length_pseudo;
+              char *sending = malloc(MAX_LENGHT_MESSAGE);
+              sprintf(sending,"[%s to you] : %s\n",pseudo_current,msg);
+              dest_client=find_specific_client_pseudo(client_list,dest_pseudo);
+              do_send(dest_client->socket_number,sending,MAX_LENGHT_MESSAGE,0);
+            }
+
+          }
+
+        //  else if ((strncmp(message,"/create \n",8) == 0)){
+
+
+
 
           else {
             do_send(tab_fd[i].fd,message,MAX_LENGHT_MESSAGE,0);

@@ -5,9 +5,10 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
-#include<netinet/in.h>
-#include<fcntl.h>
-#include<time.h>
+#include <netinet/in.h>
+#include <fcntl.h>
+#include <time.h>
+#include <poll.h>
 
 #define MAX_LENGHT_MESSAGE 1000
 
@@ -68,6 +69,20 @@ int do_recv(int sockfd, void *buf, int len, unsigned int flags){
   return (reception);
 }
 
+//Pooling
+int do_poll(struct pollfd *tab_fd){
+  int valeur_poll = poll(tab_fd, 2,-1);
+  if (valeur_poll == -1){
+    perror("ERROR poll failed");
+    exit(EXIT_FAILURE);
+  }
+  if (valeur_poll == 0){
+    perror("ERROR time out");
+    exit(EXIT_FAILURE);
+  }
+  return(valeur_poll);
+}
+
 
 int main(int argc,char** argv)
 {
@@ -85,6 +100,8 @@ int main(int argc,char** argv)
     sock_host.sin_port = htons(atoi(argv[2]));
     inet_aton(argv[1], &sock_host.sin_addr);
 
+
+
     //Creation of the socket
     int socket = do_socket();
 
@@ -93,7 +110,12 @@ int main(int argc,char** argv)
 
     // Sending information at the RE216_SERVER
       // IP
-    char *IP_address = "/IP 192.0.0.0 ";
+
+    char *name_IP = malloc(MAX_LENGHT_MESSAGE);
+    gethostname(name_IP,MAX_LENGHT_MESSAGE);
+    printf(" name_IP %s",name_IP);
+    char *IP_address = malloc(MAX_LENGHT_MESSAGE);
+    sprintf(IP_address,"/IP %s",name_IP);
     do_send(socket,IP_address,MAX_LENGHT_MESSAGE,0);
       // port
     char *port = malloc(MAX_LENGHT_MESSAGE);
@@ -102,6 +124,7 @@ int main(int argc,char** argv)
       // date
     struct tm* date;
     time_t timer;
+
     time(&timer);
     date = localtime(&timer);
     char *date_s = malloc(MAX_LENGHT_MESSAGE);
@@ -119,7 +142,7 @@ int main(int argc,char** argv)
       return 0;
     }
 
-    while (strncmp(text,"/nick ",6)!=0){
+    while (strncmp(text,"/nick ",6)!=0)  {
       printf("Please logon with /nick <your pseudo>\n");
       text=readline();
       if (strcmp(text,"/quit\n") == 0){
@@ -135,7 +158,48 @@ int main(int argc,char** argv)
     do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
     printf("The server has told you : %s",message);
 
-    while (strcmp(text,"/quit\n") != 0){
+
+    while (strcmp(message,"This pseudo already exits, choose another one.\n")==0){
+      printf("Please logon with /nick <your pseudo>\n");
+      text=readline();
+      if (strcmp(text,"/quit\n") == 0){
+
+        do_send(socket,text,MAX_LENGHT_MESSAGE,0);
+        do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
+        printf("The server has told you : %s",message);
+        return(0);
+      }
+      do_send(socket,text,MAX_LENGHT_MESSAGE,0);
+      do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
+      printf("The server has told you : %s",message);
+
+    }
+
+    //Creation of the pollfd structure
+    struct pollfd tab_fd[2];
+    memset(tab_fd,0,sizeof(tab_fd));
+
+    //Initialisation of the structure
+    tab_fd[0].fd=socket;
+    tab_fd[0].events=POLLIN;
+    tab_fd[1].fd=0;
+    tab_fd[1].events=POLLIN;
+
+    for (;;) { //endless loop
+
+      //Polling
+      do_poll(tab_fd);
+
+      if (tab_fd[0].revents==POLLIN){
+        do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
+        printf("%s",message);
+        fflush(stdout);
+      }
+
+      if (tab_fd[1].revents==POLLIN){
+
+
+    //while (strcmp(text,"/quit\n") != 0){
         //Getting user input
         text = readline();
         do_send(socket,text,MAX_LENGHT_MESSAGE,0);
@@ -157,12 +221,17 @@ int main(int argc,char** argv)
           printf("%s",message);
         }
 
-        else {
+        if (strcmp(text,"/quit\n") == 0){
+
+          do_send(socket,text,MAX_LENGHT_MESSAGE,0);
           do_recv(socket,message, MAX_LENGHT_MESSAGE,0);
           printf("The server has told you : %s",message);
-          fflush(stdout);
-        }
-      }
+          return(0);
 
+
+        }
+
+}
+}
     return 0;
 }
