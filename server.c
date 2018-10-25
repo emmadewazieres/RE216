@@ -285,6 +285,27 @@ int check_pseudo(struct client *client_list, char *pseudo){
   return(0);
 }
 
+//Checking if a salon is in the chained list thanks to its name
+int check_name(struct salon *salon_list, char *name){
+  if (salon_list==NULL){
+    perror("ERROR finding salon");
+    exit(EXIT_FAILURE);
+  }
+  struct salon *tmp;
+  tmp = salon_list;
+  if (strcmp(tmp->name,name)==0){
+    return (1);
+  }
+  tmp = tmp->next;
+  while(tmp->next != NULL){
+    if (strcmp(tmp->name,name)==0){
+      return(1);
+    }
+    tmp = tmp->next;
+  }
+  return(0);
+}
+
 //Finding a client with its pseudo
 struct client *find_specific_client_pseudo(struct client *client_list, char *pseudo){
   if (client_list==NULL){
@@ -367,6 +388,13 @@ int position_first_space(char *chaine){
     return compteur;
 }
 
+char *supp_last_caractere(char *chaine){
+  int length = strlen(chaine);
+  char *short_chaine = malloc(MAX_LENGHT_MESSAGE);
+  strncpy(short_chaine,chaine,length-1);
+  return(short_chaine);
+}
+
 
 int main(int argc, char** argv)
 {
@@ -391,6 +419,7 @@ int main(int argc, char** argv)
   struct client* current_client;
   // Initialisation of salon list (chained list)
   struct salon* salon_list = salon_list_init();
+  int current_salon = 0;
 
 
   //Binding
@@ -572,14 +601,31 @@ int main(int argc, char** argv)
          else if ((strncmp(message,"/create \n",8) == 0)){
            char* name = message + 8;
            printf("name %s\n",name);
-           salon_list=add_salon(salon_list);
-           salon_list->name = name;
-           printf("salon_list->name %s\n",salon_list->name);
-           salon_list->client_salon = client_list_init(salon_list->client_salon);
-           salon_list->client_salon = add_client(salon_list->client_salon);
-           salon_list->client_salon->pseudo = current_client->pseudo;
-           printf("salon_list->client_salon->pseudo %s\n",salon_list->client_salon->pseudo);
 
+           if((current_salon < 1) || (check_name(salon_list,name) == 0)){
+             salon_list=add_salon(salon_list);
+             current_salon ++;
+             salon_list->name = name;
+             printf("salon_list->name %s\n",salon_list->name);
+             salon_list->client_salon = client_list_init(salon_list->client_salon);
+             salon_list->client_salon = add_client(salon_list->client_salon);
+             salon_list->client_salon->pseudo = current_client->pseudo;
+             printf("salon_list->client_salon->pseudo %s\n",salon_list->client_salon->pseudo);
+             printf("1er salon\n");
+             char *creation=malloc(MAX_LENGHT_MESSAGE);
+             char *short_name =  malloc(MAX_LENGHT_MESSAGE);
+             short_name = supp_last_caractere(name);
+             sprintf(creation," salon %s creates \n",short_name);
+             printf("creation %s\n",creation);
+             do_send(tab_fd[i].fd,creation,MAX_LENGHT_MESSAGE,0);
+
+           }
+
+           else{
+             char *existence = "This name already exits, choose another one.\n";
+             do_send(tab_fd[i].fd,existence,MAX_LENGHT_MESSAGE,0);
+             printf("déjà utilisé\n");
+        }
          }
 
 
