@@ -7,7 +7,7 @@
 #include <netinet/in.h>
 #include <poll.h>
 
-#define MAX_LENGHT_MESSAGE 1000
+#define MAX_LENGTH_MESSAGE 1000
 #define NUMBER_OF_CONNECTION 20
 
 void error(const char *msg){
@@ -70,27 +70,27 @@ int do_accept(int socket, struct sockaddr* addr, socklen_t *addrlen){
 }
 
 //Reception
-int do_recv(int sockfd, void *buf, int len, unsigned int flags){
-  int reception=recv(sockfd,buf,len,flags);
+int do_recv(int sockfd, void *message){
+  int reception=recv(sockfd,message,MAX_LENGTH_MESSAGE,0);
   if (reception==-1){
     perror("ERROR reception failed");
     exit(EXIT_FAILURE);
   }
-  if (reception != len){
+  if (reception != MAX_LENGTH_MESSAGE){
     printf("The message has not been fully transmitted \n");
   }
   return (reception);
 }
 
 //Sending
-int do_send(int sockfd, const void *msg, size_t len, int flags){
+int do_send(int sockfd, const void *text){
   int sending;
-  sending = send(sockfd, msg, len, flags);
+  sending = send(sockfd, text, MAX_LENGTH_MESSAGE, 0);
   if (sending == -1){
     perror("ERROR sending failed");
     exit(EXIT_FAILURE);
   }
-  if (sending != len){
+  if (sending != MAX_LENGTH_MESSAGE){
     printf("The message has not been fully transmitted \n");
   }
   return(sending);
@@ -130,15 +130,6 @@ struct client {
   struct client *next;
 };
 
-//Declatation of the chained list for the salons
-struct salon {
-  char *name;
-  struct client *client_salon;
-  int number_client;
-  struct salon *next;
-};
-
-
 //Initialisation of the chained list
 struct client* client_list_init(){
   struct client *client_list_init;
@@ -148,17 +139,6 @@ struct client* client_list_init(){
     exit(EXIT_FAILURE);
   }
   return client_list_init;
-}
-
-//Initialisation of the salon chained list
-struct salon* salon_list_init(){
-  struct salon *salon_list_init;
-  salon_list_init=malloc(sizeof(*salon_list_init));
-  if (salon_list_init==NULL){
-    perror("ERROR salon chained list");
-    exit(EXIT_FAILURE);
-  }
-  return salon_list_init;
 }
 
 //Adding a client to the chained list
@@ -171,18 +151,6 @@ struct client* add_client(struct client* client_list){
   }
   new_client->next=client_list;
   return new_client;
-}
-
-//Adding a salon to the salon chained list
-struct salon* add_salon(struct salon* salon_list){
-  struct salon *new_salon;
-  new_salon=malloc(sizeof(*new_salon));
-  if (new_salon==NULL){
-    perror("ERROR new salon not created");
-    exit(EXIT_FAILURE);
-  }
-  new_salon->next=salon_list;
-  return new_salon;
 }
 
 //Deleting a client from the chained list
@@ -214,37 +182,6 @@ struct client *delete_client(struct client *client_list,int socket_fd){
     ptmp=ptmp->next;
   }
   return client_list;
-}
-
-//Deleting a salon from the salon chained list
-struct salon *delete_salon(struct salon *salon_list,char *salon_name){
-  if (salon_list==NULL){
-    perror("ERROR deleting client");
-    exit(EXIT_FAILURE);
-  }
-  struct client* tmp;
-  struct client* ptmp;
-  tmp=salon_list;
-  if (strcmp(tmp->name,name)==0){
-    salon_list=tmp->next;
-    free(tmp);
-    return salon_list;
-  }
-  ptmp=tmp->next;
-  while (ptmp != NULL){
-    if (ptmp->next == NULL && strcmp(ptmp->name,name)==0){
-      tmp->next = NULL;
-      return(salon_list);
-    }
-    if (strcmp(ptmp->name,name)==0){
-      tmp->next=ptmp->next;
-      free(ptmp);
-      return(salon_list);
-    }
-    tmp=ptmp;
-    ptmp=ptmp->next;
-  }
-  return salon_list;
 }
 
 //Finding a client with its socket number
@@ -285,6 +222,137 @@ int check_pseudo(struct client *client_list, char *pseudo){
   return(0);
 }
 
+//Finding a client with its pseudo
+struct client *find_specific_client_pseudo(struct client *client_list, char *pseudo){
+  if (client_list==NULL){
+    perror("ERROR finding client");
+    exit(EXIT_FAILURE);
+  }
+  struct client *tmp;
+  tmp = client_list;
+
+  while(tmp->next != NULL){
+    if (strcmp(tmp->pseudo,pseudo)==0){
+      return tmp;
+    }
+    tmp = tmp->next;
+  }
+  if (tmp->next == NULL && strcmp(tmp->pseudo,pseudo)==0){
+    return tmp;
+  }
+}
+
+//Sending the users that are connected (that are in the chained list) to a client
+void who(struct client *client_list,int socket_question){
+  if (client_list==NULL){
+    perror("ERROR who function");
+    exit(EXIT_FAILURE);
+  }
+  printf("je suis passée dans who");
+  struct client *tmp;
+  tmp =client_list;
+  char *client_pseudo=tmp->pseudo;
+  char *list = malloc(MAX_LENGTH_MESSAGE);
+  char *list_of_client = malloc(MAX_LENGTH_MESSAGE);
+  sprintf(list,"- %s \n",client_pseudo);
+  strcat(list_of_client,list);
+  tmp = tmp->next;
+  while(tmp->next != NULL){
+    client_pseudo = tmp->pseudo;
+    sprintf(list,"- %s \n",client_pseudo);
+    strcat(list_of_client,list);
+    printf("list %s",list_of_client);
+    tmp = tmp->next;
+  }
+  do_send(socket_question,list_of_client);
+}
+
+//Sending information about a client to the client that asks for them
+void whois(struct client *client_list, int socket_question){
+  if (client_list==NULL){
+    perror("ERROR whois function");
+    exit(EXIT_FAILURE);
+  }
+  char *message = malloc(MAX_LENGTH_MESSAGE);
+  sprintf(message,"Connected since %s with IP address %s and port number %d\n",client_list->date,client_list->IP_address,client_list->port_number);
+  do_send(socket_question,message);
+}
+
+int position_first_space(char *chaine){
+
+  int lenght = strlen(chaine);
+  printf("lenght %d\n",lenght);
+  int compteur = 0;
+  int i = 0;
+    while(chaine[i]!=' ' && i <=lenght ){
+      compteur = compteur +1;
+      i++;
+    }
+    return compteur;
+}
+
+//Declatation of the chained list for the salons
+struct salon {
+  char *name;
+  struct client *client_salon;
+  int number_client;
+  struct salon *next;
+};
+
+//Initialisation of the salon chained list
+struct salon* salon_list_init(){
+  struct salon *salon_list_init;
+  salon_list_init=malloc(sizeof(*salon_list_init));
+  if (salon_list_init==NULL){
+    perror("ERROR salon chained list");
+    exit(EXIT_FAILURE);
+  }
+  return salon_list_init;
+}
+
+//Adding a salon to the salon chained list
+struct salon* add_salon(struct salon* salon_list){
+  struct salon *new_salon;
+  new_salon=malloc(sizeof(*new_salon));
+  if (new_salon==NULL){
+    perror("ERROR new salon not created");
+    exit(EXIT_FAILURE);
+  }
+  new_salon->next=salon_list;
+  return new_salon;
+}
+
+//Deleting a salon from the chained list
+struct salon *delete_salon(struct salon *salon_list,char *name){
+  if (salon_list==NULL){
+    perror("ERROR deleting salon");
+    exit(EXIT_FAILURE);
+  }
+  struct salon* tmp;
+  struct salon* ptmp;
+  tmp=salon_list;
+  if (strcmp(tmp->name,name)==0){
+    salon_list=tmp->next;
+    free(tmp);
+    return salon_list;
+  }
+  ptmp=tmp->next;
+  while (ptmp != NULL){
+    if ((ptmp->next == NULL) && (strcmp(ptmp->name,name)==0)){
+      tmp->next = NULL;
+      return(salon_list);
+    }
+    if (strcmp(ptmp->name,name)==0){
+      tmp->next=ptmp->next;
+      free(ptmp);
+      return(salon_list);
+    }
+    tmp=ptmp;
+    ptmp=ptmp->next;
+  }
+  return salon_list;
+}
+
 //Checking if a salon is in the chained list thanks to its name
 int check_name(struct salon *salon_list, char *name){
   if (salon_list==NULL){
@@ -306,27 +374,7 @@ int check_name(struct salon *salon_list, char *name){
   return(0);
 }
 
-//Finding a client with its pseudo
-struct client *find_specific_client_pseudo(struct client *client_list, char *pseudo){
-  if (client_list==NULL){
-    perror("ERROR finding client");
-    exit(EXIT_FAILURE);
-  }
-  struct client *tmp;
-  tmp = client_list;
-
-  while(tmp->next != NULL){
-    if (strcmp(tmp->pseudo,pseudo)==0){
-      return tmp;
-    }
-    tmp = tmp->next;
-  }
-  if (tmp->next == NULL && strcmp(tmp->pseudo,pseudo)==0){
-    return tmp;
-  }
-}
-
-//Finding a salon with its pseudo
+//Finding a salon with its name
 struct salon *find_specific_salon_name(struct salon *salon_list, char *name){
   if (salon_list==NULL){
     perror("ERROR finding salon");
@@ -347,50 +395,10 @@ struct salon *find_specific_salon_name(struct salon *salon_list, char *name){
 }
 
 //Adding client in a specific salons
-void add_client_in_salon(struct salon *salon_list,char *name_salon,struct client *client_to_add){
-  struct salon *asked_salon = find_specific_salon_name(salon_list,name_salon);
+void add_client_in_salon(struct salon *salon_list,char *name,struct client *client_to_add){
+  struct salon *asked_salon = find_specific_salon_name(salon_list,name);
+  printf("dans add salon %s",asked_salon->name);
   asked_salon->client_salon = add_client(client_to_add);
-}
-
-//Sending the users that are connected (that are in the chained list) to a client
-void who(struct client *client_list,int socket_question,int current_connection){
-  if (client_list==NULL){
-    perror("ERROR who function");
-    exit(EXIT_FAILURE);
-  }
-  struct client *tmp;
-  tmp = client_list;
-  char *client_pseudo = malloc(MAX_LENGHT_MESSAGE);
-  while(tmp->next != NULL){
-    client_pseudo = tmp->pseudo;
-    do_send(socket_question,client_pseudo,MAX_LENGHT_MESSAGE,0);
-    //printf("longueur %ld\n",strlen(client_pseudo));
-    tmp = tmp->next;
-  }
-}
-
-
-//Sending the client that are connected (that are in the chained list) to a client
-char *who2(struct client *client_list,int socket_question){
-  if (client_list==NULL){
-    perror("ERROR who2 function");
-    exit(EXIT_FAILURE);
-  }
-  struct client *tmp;
-  tmp =client_list;
-  char *client_pseudo = malloc(MAX_LENGHT_MESSAGE);
-  char *liste_of_client = malloc(MAX_LENGHT_MESSAGE);
-
-  char *temp = malloc(MAX_LENGHT_MESSAGE);
-  while(tmp->next != NULL){
-    client_pseudo = tmp->pseudo;
-    sprintf(temp,"- %s \n",client_pseudo);
-    strcat(liste_of_client,temp);
-    //printf("longueur %ld\n",strlen(client_pseudo));
-    tmp = tmp->next;
-  }
-
-  return (liste_of_client);
 }
 
 //Sending the salons that have been created (that are in the salon chained list) to a client
@@ -401,13 +409,12 @@ void which(struct salon *salon_list,int socket_question){
   }
   struct salon *tmp;
   tmp = salon_list;
-  char *salon_name = malloc(MAX_LENGHT_MESSAGE);
-  char *liste_of_salon = malloc(MAX_LENGHT_MESSAGE);
+  char *salon_name = malloc(MAX_LENGTH_MESSAGE);
+  char *liste_of_salon = malloc(MAX_LENGTH_MESSAGE);
 
-  char *temp = malloc(MAX_LENGHT_MESSAGE);
+  char *temp = malloc(MAX_LENGTH_MESSAGE);
   if(tmp->next == NULL){
-    liste_of_salon = "There isn't salon \n";
-    printf("pas de salon\n");
+    liste_of_salon = "There is not any salon yet.\n";
   }
   while(tmp->next != NULL){
     salon_name = tmp->name;
@@ -417,61 +424,31 @@ void which(struct salon *salon_list,int socket_question){
     tmp = tmp->next;
   }
 
-  do_send(socket_question,liste_of_salon,MAX_LENGHT_MESSAGE,0);
+  do_send(socket_question,liste_of_salon);
 }
 
-//Sending information about a client to the client that asks for them
-void whois(struct client *client_list, int socket_question){
-  if (client_list==NULL){
-    perror("ERROR whois function");
-    exit(EXIT_FAILURE);
-  }
-  char *message = malloc(MAX_LENGHT_MESSAGE);
-  sprintf(message,"Connected since %s with IP address %s and port number %d\n",client_list->date,client_list->IP_address,client_list->port_number);
-  do_send(socket_question,message,MAX_LENGHT_MESSAGE,0);
-}
-
-void whoisin(struct salon *salon_list,int socket_question, char *name_salon){
+void whoisin(struct salon *salon_list,int socket_question, char *name){
   if (salon_list==NULL){
     perror("ERROR whoisin function");
-    //exit(EXIT_FAILURE); si il n'existe aucun salon on veut pas forcément crasher tout
   }
-  if(check_name(salon_list,name_salon) == 1){
-  struct salon *salon_cible = find_specific_salon_name(salon_list,name_salon);
-  char *liste_of_client = malloc(MAX_LENGHT_MESSAGE);
-  liste_of_client = who2(salon_cible->client_salon,socket_question);
-  do_send(socket_question,liste_of_client,MAX_LENGHT_MESSAGE,0);
+  if(check_name(salon_list,name) == 1){
+    struct salon *salon_cible = find_specific_salon_name(salon_list,name);
+    printf("avant who slaon %s",salon_cible->name);
+    who(salon_cible->client_salon,socket_question);
+    printf("après who dans whoisin");
   }
   else {
-  char *error = "This salon doesn't exist.\n";
-  do_send(socket_question,error,MAX_LENGHT_MESSAGE,0);
+    char *text = "This salon doesn't exist.\n";
+    do_send(socket_question,text);
   }
-
-
-
-}
-
-
-int position_first_space(char *chaine){
-
-  int lenght = strlen(chaine);
-  printf("lenght %d\n",lenght);
-  int compteur = 0;
-  int i = 0;
-    while(chaine[i]!=' ' && i <=lenght ){
-      compteur = compteur +1;
-      i++;
-    }
-    return compteur;
 }
 
 char *supp_last_caractere(char *chaine){
   int length = strlen(chaine);
-  char *short_chaine = malloc(MAX_LENGHT_MESSAGE);
+  char *short_chaine = malloc(MAX_LENGTH_MESSAGE);
   strncpy(short_chaine,chaine,length-1);
   return(short_chaine);
 }
-
 
 int main(int argc, char** argv)
 {
@@ -494,9 +471,11 @@ int main(int argc, char** argv)
   // Initialisation of client list (chained list)
   struct client* client_list = client_list_init();
   struct client* current_client;
+
   // Initialisation of salon list (chained list)
   struct salon* salon_list = salon_list_init();
   int current_salon = 0;
+  salon_list->client_salon = client_list_init(salon_list->client_salon);
 
 
   //Binding
@@ -536,7 +515,7 @@ int main(int argc, char** argv)
               printf("Connecting with client n°%d. %d current connection(s).\n",j,current_connection);
               fflush(stdout);
               char *hello="Hello client !\n";
-              do_send(tab_fd[j].fd,hello,MAX_LENGHT_MESSAGE,0);
+              do_send(tab_fd[j].fd,hello);
               client_list=add_client(client_list);
               client_list->pseudo = NULL;
               client_list->socket_number = tab_fd[j].fd;
@@ -547,41 +526,53 @@ int main(int argc, char** argv)
           if (current_connection==NUMBER_OF_CONNECTION+1){
             int supp = sock_client;
             char *error = "Too many clients, connection failed. Come back later\n";
-            do_send(supp,error,MAX_LENGHT_MESSAGE,0);
+            do_send(supp,error);
             do_close(supp);
             current_connection-=1;
           }
         }
         else {
           current_client=find_specific_client(client_list,tab_fd[i].fd);
-          char *message = malloc(MAX_LENGHT_MESSAGE);
-          do_recv(tab_fd[i].fd,message,MAX_LENGHT_MESSAGE,0);
+          char *message = malloc(MAX_LENGTH_MESSAGE);
+          do_recv(tab_fd[i].fd,message);
 
           if (strncmp(message,"/nick ",6)==0){
-            //printf("massage %s\n",message +6);
-          //  char *message_bis = message + 6;
-          //  if (check_pseudo(client_list, message_bis) == 1){
-            //  printf("message %s\n",message_bis);
-              //char *pseudo_already_exists = "pseudo already exists";
-            //  printf("%s \n",pseudo_already_exists);
-            //  do_send(tab_fd[i].fd,pseudo_already_exists,MAX_LENGHT_MESSAGE,0);
-            //}
-          //  else{
+          char *realpseudo=message+6;
+          int length=strlen(realpseudo);
+          fflush(stdout);
+          if (current_connection<=1){
+            if (current_client->pseudo==NULL){
+              char *welcome = "Welcome on the chat !\n";
+              do_send(tab_fd[i].fd,welcome);
+              current_client->pseudo=realpseudo;
+            }
+            else {
+              char *realpseudo=message+6;
+              current_client->pseudo=realpseudo;
+              char *change = "Your nickname has been updated.\n";
+              do_send(tab_fd[i].fd,change);
+            }
+          }
+          else {
+          if (check_pseudo(client_list->next,realpseudo)==0){
               if (current_client->pseudo==NULL){
                 char *welcome = "Welcome on the chat !\n";
-                do_send(tab_fd[i].fd,welcome,MAX_LENGHT_MESSAGE,0);
-                char *realpseudo=message+6;
+                do_send(tab_fd[i].fd,welcome);
                 current_client->pseudo=realpseudo;
               }
               else {
                 char *realpseudo=message+6;
                 current_client->pseudo=realpseudo;
                 char *change = "Your nickname has been updated.\n";
-                do_send(tab_fd[i].fd,change,MAX_LENGHT_MESSAGE,0);
+                do_send(tab_fd[i].fd,change);
               }
-          //  }
+            }
+            else {
+              char *pseudo_error ="This pseudo already exits, choose another one.\n";
+              do_send(tab_fd[i].fd,pseudo_error);
+            }
           }
-
+}
           else if (strncmp(message,"/IP ",4)==0){
             char *IP = message + 4;
             current_client->IP_address = IP;
@@ -602,7 +593,7 @@ int main(int argc, char** argv)
             client_list = delete_client(client_list,tab_fd[i].fd);
             current_connection-=1;
             char *last_message = "Closing connection.\n";
-            do_send(tab_fd[i].fd,last_message,MAX_LENGHT_MESSAGE,0);
+            do_send(tab_fd[i].fd,last_message);
             printf("Closing client n°%d connection.%d current connection(s).\n",i,current_connection);
             fflush(stdout);
             do_close(tab_fd[i].fd);
@@ -610,10 +601,7 @@ int main(int argc, char** argv)
           }
 
           else if ((strcmp(message,"/who\n") == 0)){
-            char *currentco=malloc(MAX_LENGHT_MESSAGE);
-            sprintf(currentco,"%d",current_connection);
-            do_send(tab_fd[i].fd,currentco,MAX_LENGHT_MESSAGE,0);
-            who(client_list,tab_fd[i].fd,current_connection);
+            who(client_list,tab_fd[i].fd);
           }
 
           else if ((strncmp(message,"/whois \n",7) == 0)){
@@ -622,7 +610,7 @@ int main(int argc, char** argv)
             struct client *user;
             if (check_pseudo(client_list,pseudowhois)==0){
               char *error ="This user doesn't exist\n";
-              do_send(tab_fd[i].fd,error,MAX_LENGHT_MESSAGE,0);
+              do_send(tab_fd[i].fd,error);
             }
             else {
               user=find_specific_client_pseudo(client_list,pseudowhois);
@@ -632,139 +620,121 @@ int main(int argc, char** argv)
 
           else if ((strncmp(message,"/all \n",5) == 0)){
             char *message_all = message + 5;
-            char *sender = current_client->pseudo;
-
-            /*char* envoie = strcat(sender, "has told you : ");
-            printf("envoie %s\n",envoie);
-            printf("sender %s\n",sender);
-            printf("message_all %s\n",message_all);*/
-
+            int length = strlen(current_client->pseudo);
+            char *sender = malloc(MAX_LENGTH_MESSAGE);
+            strncpy(sender, current_client->pseudo,length-1);
+            char *all=malloc(MAX_LENGTH_MESSAGE);
+            sprintf(all,"[%s to everyone] : %s\n",sender,message_all);
             for(int k=1;k<=current_connection;k++) {
               if (k != i){
-                do_send(tab_fd[k].fd,message_all,MAX_LENGHT_MESSAGE,0);
+                do_send(tab_fd[k].fd,all);
 
               }
             }
           }
 
           else if ((strncmp(message,"/msg \n",5) == 0)){
-            char *chaine_dest_et_msg = message + 5;
+            char *pseudo_msg = message + 5;
 
-            int lenght_dest_pseudo = position_first_space(chaine_dest_et_msg);
-            printf("lenght_dest_pseudo %d\n",lenght_dest_pseudo);
-            char *dest_pseudo = malloc(MAX_LENGHT_MESSAGE);
-            //char dest_pseudo[lenght_dest_pseudo];
-            for (int i=0;i<lenght_dest_pseudo;i++){
-              dest_pseudo[i] = chaine_dest_et_msg[i];
-            }
-            dest_pseudo[lenght_dest_pseudo] = '\n';
-
-            printf("dest_pseudo %s\n",dest_pseudo);
-
+            int length_pseudo = position_first_space(pseudo_msg);
+            char *dest_pseudo = malloc(MAX_LENGTH_MESSAGE);
+            strncpy(dest_pseudo,pseudo_msg,length_pseudo);
+            dest_pseudo[length_pseudo] = '\n';
             struct client *dest_client;
             if (check_pseudo(client_list,dest_pseudo)==0){
               char *error ="This user doesn't exist\n";
-              do_send(tab_fd[i].fd,error,MAX_LENGHT_MESSAGE,0);
+              do_send(tab_fd[i].fd,error);
             }
             else {
-              char *envoie = chaine_dest_et_msg + lenght_dest_pseudo;
+              char *pseudo_current = malloc(MAX_LENGTH_MESSAGE);
+              int length_current = strlen(current_client->pseudo);
+              strncpy(pseudo_current,current_client->pseudo,length_current-1);
+              char *msg = pseudo_msg + length_pseudo;
+              char *sending = malloc(MAX_LENGTH_MESSAGE);
+              sprintf(sending,"[%s to you] : %s\n",pseudo_current,msg);
               dest_client=find_specific_client_pseudo(client_list,dest_pseudo);
-              do_send(dest_client->socket_number,envoie,MAX_LENGHT_MESSAGE,0);
+              do_send(dest_client->socket_number,sending);
             }
 
           }
 
-         else if ((strncmp(message,"/create \n",8) == 0)){
-           char* name = message + 8;
-           printf("name %s\n",name);
+          else if ((strncmp(message,"/create \n",8) == 0)){
+             char* name = message + 8;
+             if((current_salon < 1) || (check_name(salon_list,name) == 0)){
+               salon_list=add_salon(salon_list);
+               current_salon ++;
+               salon_list->name = name;
+               salon_list->client_salon = add_client(salon_list->client_salon);
+               salon_list->client_salon->pseudo = current_client->pseudo;
+               printf("pseudo du client est : %s",salon_list->client_salon->pseudo);
+               char *creation=malloc(MAX_LENGTH_MESSAGE);
+               char *short_name =  malloc(MAX_LENGTH_MESSAGE);
+               short_name = supp_last_caractere(name);
+               sprintf(creation,"You have created salon %s\n",short_name);
+               do_send(tab_fd[i].fd,creation);
+             }
 
-           if((current_salon < 1) || (check_name(salon_list,name) == 0)){
-             salon_list=add_salon(salon_list);
-             current_salon ++;
-             salon_list->name = name;
-             printf("salon_list->name %s\n",salon_list->name);
-             salon_list->client_salon = client_list_init(salon_list->client_salon);
-             salon_list->client_salon = add_client(salon_list->client_salon);
-             salon_list->client_salon->pseudo = current_client->pseudo;
-             printf("salon_list->client_salon->pseudo %s\n",salon_list->client_salon->pseudo);
-             printf("1er salon\n");
-             char *creation=malloc(MAX_LENGHT_MESSAGE);
-             char *short_name =  malloc(MAX_LENGHT_MESSAGE);
-             short_name = supp_last_caractere(name);
-             sprintf(creation,"You have created salon %s\n",short_name);
-             printf("creation %s\n",creation);
-             do_send(tab_fd[i].fd,creation,MAX_LENGHT_MESSAGE,0);
+             else{
+               char *existence = "This name already exits, choose another one.\n";
+               do_send(tab_fd[i].fd,existence);
+               printf("déjà utilisé\n");
+             }
+           }
+
+           else if ((strncmp(message,"/join \n",6) == 0)){
+             char* name_salon = message + 6;
+             printf("name_salon %s\n",name_salon);
+             if(check_name(salon_list,name_salon) != 0){
+               struct salon *cible_salon = find_specific_salon_name(salon_list,name_salon);
+               if(check_pseudo(cible_salon->client_salon, current_client->pseudo) == 0){
+               char *join = malloc(MAX_LENGTH_MESSAGE);
+               sprintf(join,"you join salon %s ",name_salon);
+               add_client_in_salon(salon_list,name_salon,current_client);
+               printf("ici\n");
+               do_send(tab_fd[i].fd,join);
+             }
+             else{
+               char *presence = "You are already member of this salon.\n";
+               do_send(tab_fd[i].fd,presence);
+             }
+             }
+             else{
+               char *existence = "This salon doesn't exist.\n";
+               do_send(tab_fd[i].fd,existence);
+             }
+
 
            }
 
-           else{
-             char *existence = "This name already exits, choose another one.\n";
-             do_send(tab_fd[i].fd,existence,MAX_LENGHT_MESSAGE,0);
-             printf("déjà utilisé\n");
+           else if ((strncmp(message,"/which\n",7) == 0)){
+             which(salon_list,tab_fd[i].fd);
            }
-         }
 
-         else if ((strncmp(message,"/join \n",6) == 0)){
-           char* name_salon = message + 6;
-           printf("name_salon %s\n",name_salon);
-           if(check_name(salon_list,name_salon) != 0){
-             struct salon *cible_salon = find_specific_salon_name(salon_list,name_salon);
-             if(check_pseudo(cible_salon->client_salon, current_client->pseudo) == 0){
-             char *join = malloc(MAX_LENGHT_MESSAGE);
-             sprintf(join,"you join salon %s ",name_salon);
-             add_client_in_salon(salon_list,name_salon,current_client);
-             printf("ici\n");
-             do_send(tab_fd[i].fd,join,MAX_LENGHT_MESSAGE,0);
-           }
-           else{
-             char *presence = "You are already member of this salon.\n";
-             do_send(tab_fd[i].fd,presence,MAX_LENGHT_MESSAGE,0);
-           }
-           }
-           else{
-             char *existence = "This salon doesn't exist.\n";
-             do_send(tab_fd[i].fd,existence,MAX_LENGHT_MESSAGE,0);
+           else if ((strncmp(message,"/whoisin\n",8) == 0)){
+             char* name_salon = message + 9;
+             printf("name_salon %s\n",name_salon);
+             printf("taille %ld\n",strlen(name_salon));
+
+             /*char *variable=malloc(MAX_LENGTH_MESSAGE);
+             variable = who2(client_list,tab_fd[i].fd);
+             printf("variable %s\n",variable);*/
+             whoisin(salon_list,current_client->socket_number,name_salon);
            }
 
 
-         }
-
-         else if ((strncmp(message,"/which\n",7) == 0)){
-           which(salon_list,tab_fd[i].fd);
-         }
-
-         else if ((strncmp(message,"/whoisin\n",8) == 0)){
-           char* name_salon = message + 9;
-           printf("name_salon %s\n",name_salon);
-           printf("taille %ld\n",strlen(name_salon));
-
-           /*char *variable=malloc(MAX_LENGHT_MESSAGE);
-           variable = who2(client_list,tab_fd[i].fd);
-           printf("variable %s\n",variable);*/
-           whoisin(salon_list,tab_fd[i].fd,name_salon);
-         }
-
-         else if (strncmp(message,"/leave ",8) == 0){
-           char *salon_name = message + 8;
-           //check si le salon existe plus si on est dedans ?
-           struct salon *asked_salon = find_specific_salon_name(salon_list,salon_name);
-           delete_client(asked_salon->client_salon,current_client->socket_number);
-           asked_salon->number_client-=1;
-           if (asked_salon->number_client==0){
-             delete_salon(salon_list,salon_name);
-           }
-         }
 
 
-          else {
-            do_send(tab_fd[i].fd,message,MAX_LENGHT_MESSAGE,0);
-            printf("The client n°%d has sent you : %s",i,message);
-            fflush(stdout);
+            else {
+              do_send(tab_fd[i].fd,message);
+              printf("The client n°%d has sent you : %s",i,message);
+              fflush(stdout);
+            }
           }
         }
       }
     }
-  }
+
+
 
   //clean up server socket
   do_close(socket_server);
