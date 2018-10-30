@@ -142,13 +142,15 @@ struct client* client_list_init(){
 }
 
 //Adding a client to the chained list
-struct client* add_client(struct client* client_list){
+struct client* add_client(struct client* client_list, char *pseudo, int socket_number){
   struct client *new_client;
   new_client=malloc(sizeof(*new_client));
   if (new_client==NULL){
     perror("ERROR new client not created");
     exit(EXIT_FAILURE);
   }
+  new_client->pseudo = pseudo;
+  new_client->socket_number = socket_number;
   new_client->next=client_list;
   return new_client;
 }
@@ -291,7 +293,7 @@ int position_first_space(char *chaine){
     return compteur;
 }
 
-//Declatation of the chained list for the salons
+//Declatation of the chained list for the salon
 struct salon {
   char *name;
   struct client *client_salon;
@@ -394,11 +396,11 @@ struct salon *find_specific_salon_name(struct salon *salon_list, char *name){
   }
 }
 
-//Adding client in a specific salons
+//Adding client in a specific salon
 void add_client_in_salon(struct salon *salon_list,char *name,struct client *client_to_add){
   struct salon *asked_salon = find_specific_salon_name(salon_list,name);
   printf("dans add salon %s",asked_salon->name);
-  asked_salon->client_salon = add_client(client_to_add);
+  asked_salon->client_salon = add_client(client_to_add,client_to_add->pseudo,client_to_add->socket_number);
 }
 
 //Sending the salons that have been created (that are in the salon chained list) to a client
@@ -516,10 +518,7 @@ int main(int argc, char** argv)
               fflush(stdout);
               char *hello="Hello client !\n";
               do_send(tab_fd[j].fd,hello);
-              client_list=add_client(client_list);
-              client_list->pseudo = NULL;
-              client_list->socket_number = tab_fd[j].fd;
-              client_list->socket_fd = j;
+              client_list=add_client(client_list,NULL,tab_fd[j].fd);
               break;
             }
           }
@@ -664,8 +663,7 @@ int main(int argc, char** argv)
                salon_list=add_salon(salon_list);
                current_salon ++;
                salon_list->name = name;
-               salon_list->client_salon = add_client(salon_list->client_salon);
-               salon_list->client_salon->pseudo = current_client->pseudo;
+               salon_list->client_salon = add_client(salon_list->client_salon,current_client->pseudo,current_client->socket_number);
                printf("pseudo du client est : %s",salon_list->client_salon->pseudo);
                char *creation=malloc(MAX_LENGTH_MESSAGE);
                char *short_name =  malloc(MAX_LENGTH_MESSAGE);
@@ -684,19 +682,22 @@ int main(int argc, char** argv)
            else if ((strncmp(message,"/join \n",6) == 0)){
              char* name_salon = message + 6;
              printf("name_salon %s\n",name_salon);
-             if(check_name(salon_list,name_salon) != 0){
+             if(check_name(salon_list,name_salon) == 1){
+               printf("coucou1 ");
                struct salon *cible_salon = find_specific_salon_name(salon_list,name_salon);
-               if(check_pseudo(cible_salon->client_salon, current_client->pseudo) == 0){
-               char *join = malloc(MAX_LENGTH_MESSAGE);
-               sprintf(join,"you join salon %s ",name_salon);
-               add_client_in_salon(salon_list,name_salon,current_client);
-               printf("ici\n");
-               do_send(tab_fd[i].fd,join);
-             }
-             else{
-               char *presence = "You are already member of this salon.\n";
-               do_send(tab_fd[i].fd,presence);
-             }
+               printf("coucou2 : %s",cible_salon->name);
+              if(check_pseudo(cible_salon->client_salon, current_client->pseudo) == 0){
+                 printf("coucou3");
+                 char *join = malloc(MAX_LENGTH_MESSAGE);
+                 sprintf(join,"you join salon %s ",name_salon);
+                 add_client_in_salon(salon_list,name_salon,current_client);
+                 printf("ici\n");
+                 do_send(tab_fd[i].fd,join);
+              }
+                else{
+                char *presence = "You are already a member of this salon.\n";
+                 do_send(tab_fd[i].fd,presence);
+                }
              }
              else{
                char *existence = "This salon doesn't exist.\n";
