@@ -79,6 +79,13 @@ void do_poll(struct pollfd *tab_fd){
   }
 }
 
+char *supp_last_caractere(char *chaine){
+  int length = strlen(chaine);
+  char *short_chaine = malloc(MAX_LENGTH_MESSAGE);
+  strncpy(short_chaine,chaine,length-1);
+  return(short_chaine);
+}
+
 
 int main(int argc,char** argv)
 {
@@ -199,38 +206,27 @@ int main(int argc,char** argv)
         text = readline();
         do_send(socket,text);
 
-        if (strcmp(text,"/who\n")==0){
+        if (strcmp(text,"/quit\n") == 0){
+          do_send(socket,text);
+          do_recv(socket,message);
+          printf("The server has told you : %s",message);
+          return(0);
+        }
+        else if (strcmp(text,"/who\n")==0){
           do_recv(socket,message);
           printf("Online users are :\n%s",message);
         }
-
-        else if (strncmp(text,"/whois \n",7) == 0){
-          do_recv(socket,message);
-          printf("%s",message);
+        else if (strncmp(text,"/whoisin ",9)==0){
+          char *name_salon = text +9;
+          char *name = supp_last_caractere(name_salon);
+          do_recv(socket, message);
+          printf("Users in %s are :\n%s",name,message);
         }
-
-        // else if (strncmp(text,"/whoisin \n",9) == 0){
-        //   char *salon = text +9;
-        //   int length_salon = strlen(salon);
-        //   char *realsalon = malloc(MAX_LENGTH_MESSAGE);
-        //   strncpy(realsalon,salon,length_salon-1);
-        //   do_recv(socket,message);
-        //   printf("Users in %s are : %s",realsalon,message);
-        // }
         else {
           do_recv(socket,message);
           printf("%s",message);
         }
 
-        if (strcmp(text,"/quit\n") == 0){
-
-          do_send(socket,text);
-          do_recv(socket,message);
-          printf("The server has told you : %s",message);
-          return(0);
-
-
-        }
 
 }
 }
