@@ -216,6 +216,10 @@ int main(int argc,char** argv)
           do_recv(socket,message);
           printf("Online users are :\n%s",message);
         }
+        else if (strcmp(text,"/which\n")==0){
+          do_recv(socket,message);
+          printf("Salons are :\n%s",message);
+        }
         else if (strncmp(text,"/whoisin ",9)==0){
           char *name_salon = text +9;
           char *name = supp_last_caractere(name_salon);

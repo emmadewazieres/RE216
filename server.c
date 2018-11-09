@@ -724,6 +724,32 @@ int main(int argc, char** argv)
              whoisin(salon_list,current_client->socket_number,name_salon);
            }
 
+           else if (strncmp(message,"/leave ",7)==0){
+             char *name_salon=message +7;
+             if (check_name(salon_list,name_salon)==1){
+               struct salon* salon_to_update = find_specific_salon_name(salon_list,name_salon);
+               if (check_pseudo(salon_to_update->client_salon,current_client->pseudo)==1){
+                 salon_to_update->client_salon=delete_client(salon_to_update->client_salon,tab_fd[i].fd);
+                 salon_to_update->number_client-=1;
+                 printf("nombre cients dans salon %d\n",salon_to_update->number_client);
+                 char *leave = malloc(MAX_LENGTH_MESSAGE);
+                 sprintf(leave,"You left salon %s.\n",name_salon);
+                 do_send(tab_fd[i].fd,leave);
+               }
+               else {
+                 char *error = "You are not in this salon, you can't leave it.\n";
+                 do_send(tab_fd[i].fd,error);
+               }
+               if (salon_to_update->number_client==0){
+                 salon_list = delete_salon(salon_list,name_salon);
+               }
+             }
+             else {
+               char *existence_salon = "This salon doesn't exist.\n";
+               do_send(tab_fd[i].fd,existence_salon);
+             }
+           }
+
 
 
 
