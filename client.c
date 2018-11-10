@@ -218,7 +218,7 @@ int main(int argc,char** argv)
         }
         else if (strcmp(text,"/which\n")==0){
           do_recv(socket,message);
-          printf("Salons are :\n%s",message);
+          printf("%s",message);
         }
         else if (strncmp(text,"/whoisin ",9)==0){
           char *name_salon = text +9;
