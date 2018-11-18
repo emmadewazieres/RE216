@@ -404,9 +404,9 @@ struct salon *find_specific_salon_name(struct salon *salon_list, char *name){
 void add_client_in_salon(struct salon *salon_list,char *name,struct client *client_to_add){
   struct salon *asked_salon = find_specific_salon_name(salon_list,name);
   printf("dans add salon %s",asked_salon->name);
-  who(asked_salon->client_salon,client_to_add->socket_number); //
+
   asked_salon->client_salon = add_client(asked_salon->client_salon,client_to_add->pseudo,client_to_add->socket_number);
-  who(asked_salon->client_salon,client_to_add->socket_number); //
+  
   asked_salon->number_client+=1;
   printf("nombre clientdans salon = %d\n",asked_salon->number_client);
 }
@@ -436,11 +436,15 @@ void which(struct salon *salon_list,int socket_question){
   do_send(socket_question,liste_of_salon);
 }
 
-void whoisin(struct salon *salon_list,int socket_question, char *name){
+void whoisin(struct salon *salon_list,int socket_question, char *name,int current_salon){
   if (salon_list==NULL){
     perror("ERROR whoisin function");
   }
-  if(check_name(salon_list,name) == 1){
+  if(current_salon == 0){
+    char *text = "This salon doesn't exist.\n";
+    do_send(socket_question,text);
+  }
+  else if(check_name(salon_list,name) == 1){
     struct salon *salon_cible = find_specific_salon_name(salon_list,name);
     printf("avant who slaon %s\n",salon_cible->name);
     if (salon_cible->number_client==1){
@@ -733,7 +737,7 @@ int main(int argc, char** argv)
              /*char *variable=malloc(MAX_LENGTH_MESSAGE);
              variable = who2(client_list,tab_fd[i].fd);
              printf("variable %s\n",variable);*/
-             whoisin(salon_list,current_client->socket_number,name_salon);
+             whoisin(salon_list,current_client->socket_number,name_salon,current_salon);
            }
 
            else if (strncmp(message,"/leave ",7)==0){
@@ -756,6 +760,8 @@ int main(int argc, char** argv)
                }
                if (salon_to_update->number_client==0){
                  salon_list = delete_salon(salon_list,name_salon);
+                 current_salon --;
+                 printf("current_salon = %d \n",current_salon);
                }
              }
              else {
