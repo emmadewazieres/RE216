@@ -127,6 +127,7 @@ struct client {
   char *IP_address;
   int port_number;
   char *date;
+  int nb_salon_in;
   struct client *next;
 };
 
@@ -406,7 +407,7 @@ void add_client_in_salon(struct salon *salon_list,char *name,struct client *clie
   printf("dans add salon %s",asked_salon->name);
 
   asked_salon->client_salon = add_client(asked_salon->client_salon,client_to_add->pseudo,client_to_add->socket_number);
-  
+
   asked_salon->number_client+=1;
   printf("nombre clientdans salon = %d\n",asked_salon->number_client);
 }
@@ -463,6 +464,32 @@ void whoisin(struct salon *salon_list,int socket_question, char *name,int curren
     do_send(socket_question,text);
   }
 }
+
+/*struct salon *leave_salon_apres_quit(struct salon *salon_list,struct client *current_client,int socket_fd){
+  struct salon *tmp_salon;
+  tmp_salon = salon_list;
+  int cmp = 0;
+
+
+  if(tmp_salon->next == NULL){
+    printf("tmp_salon == NULL\n");
+  }
+  while(tmp_salon->next != NULL){
+    printf("salut\n");
+    if(check_pseudo(tmp_salon->client_salon, current_client->pseudo) == 1){
+      cmp ++;
+      printf("cmp = %d\n",cmp);
+
+      tmp_salon->client_salon=delete_client(tmp_salon->client_salon,socket_fd);
+
+
+      tmp_salon->number_client-=1;
+    }
+  tmp_salon = tmp_salon->next;
+
+}
+  return (tmp_salon);
+}*/
 
 char *supp_last_caractere(char *chaine){
   int length = strlen(chaine);
@@ -537,6 +564,7 @@ int main(int argc, char** argv)
               char *hello="Hello client !\n";
               do_send(tab_fd[j].fd,hello);
               client_list=add_client(client_list,NULL,tab_fd[j].fd);
+              client_list->nb_salon_in = 0;
               break;
             }
           }
@@ -607,14 +635,22 @@ int main(int argc, char** argv)
           }
 
           else if ((strcmp(message,"/quit\n") == 0)){
+            if(current_client->nb_salon_in != 0){
+              char *pb_quit=malloc(MAX_LENGTH_MESSAGE);
+              sprintf(pb_quit,"You are in %d salons. Please leave it/them before to quit\n",current_client->nb_salon_in);
+              do_send(tab_fd[i].fd,pb_quit);
+            }
+            else{
             client_list = delete_client(client_list,tab_fd[i].fd);
             current_connection-=1;
-            char *last_message = "Closing connection.\n";
+            char *last_message = "/ok_to_quit Closing connection.\n";
             do_send(tab_fd[i].fd,last_message);
             printf("Closing client n°%d connection.%d current connection(s).\n",i,current_connection);
             fflush(stdout);
+
             do_close(tab_fd[i].fd);
             tab_fd[i].fd=0;
+          }
           }
 
           else if ((strcmp(message,"/who\n") == 0)){
@@ -683,6 +719,9 @@ int main(int argc, char** argv)
              if((current_salon < 1) || (check_name(salon_list,name) == 0)){
                salon_list=add_salon(salon_list, name,current_client->pseudo,current_client->socket_number);
                current_salon++;
+               current_client->nb_salon_in ++;
+               printf("current_client->nb_salon_in = %d\n",current_client->nb_salon_in);
+
                printf("nbe salon %d\n",current_salon);
                char *creation=malloc(MAX_LENGTH_MESSAGE);
                char *short_name =  malloc(MAX_LENGTH_MESSAGE);
@@ -709,6 +748,8 @@ int main(int argc, char** argv)
                  char *join = malloc(MAX_LENGTH_MESSAGE);
                  sprintf(join,"you joined salon %s ",name_salon);
                  add_client_in_salon(salon_list,name_salon,current_client);
+                 current_client->nb_salon_in ++;
+                 printf("current_client->nb_salon_in = %d\n",current_client->nb_salon_in);
                  printf("ici\n");
                  do_send(tab_fd[i].fd,join);
              }
@@ -748,6 +789,7 @@ int main(int argc, char** argv)
                if (check_pseudo(salon_to_update->client_salon,current_client->pseudo)==1){
                  salon_to_update->client_salon=delete_client(salon_to_update->client_salon,tab_fd[i].fd);
                  salon_to_update->number_client-=1;
+                 current_client->nb_salon_in --;
                  printf("nombre cients dans salon %d\n",salon_to_update->number_client);
                  char *leave = malloc(MAX_LENGTH_MESSAGE);
                  sprintf(leave,"You left salon %s.\n",name_salon);

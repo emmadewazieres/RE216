@@ -207,12 +207,17 @@ int main(int argc,char** argv)
         do_send(socket,text);
 
         if (strcmp(text,"/quit\n") == 0){
-          do_send(socket,text);
+          //do_send(socket,text);
           do_recv(socket,message);
+          if (strncmp(message,"/ok_to_quit",11)==0){
           printf("The server has told you : %s",message);
           return(0);
         }
-        else if (strcmp(text,"/who\n")==0){
+        else{
+          printf("The server has told you : %s",message);
+        }
+        }
+        if (strcmp(text,"/who\n")==0){
           do_recv(socket,message);
           printf("Online users are :\n%s",message);
         }
