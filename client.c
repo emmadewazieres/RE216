@@ -226,10 +226,10 @@ int main(int argc,char** argv)
           do_recv(socket, message);
           printf("Users in %s are :\n%s",name,message);
         }
-        else {
+        /*else {
           do_recv(socket,message);
           printf("%s",message);
-        }
+        }*/
 
 
 }

@@ -256,11 +256,14 @@ void who(struct client *client_list,int socket_question){
   char *client_pseudo;
   char *list = malloc(MAX_LENGTH_MESSAGE);
   char *list_of_client = malloc(MAX_LENGTH_MESSAGE);
+  int i = 0;
   while(tmp->next != NULL){
+    i++;
     client_pseudo = tmp->pseudo;
     sprintf(list,"- %s \n",client_pseudo);
     strcat(list_of_client,list);
     printf("list %s",list_of_client);
+    printf("nbe passage while du who %d\n",i);
     tmp = tmp->next;
   }
   do_send(socket_question,list_of_client);
@@ -401,7 +404,9 @@ struct salon *find_specific_salon_name(struct salon *salon_list, char *name){
 void add_client_in_salon(struct salon *salon_list,char *name,struct client *client_to_add){
   struct salon *asked_salon = find_specific_salon_name(salon_list,name);
   printf("dans add salon %s",asked_salon->name);
-  asked_salon->client_salon = add_client(client_to_add,client_to_add->pseudo,client_to_add->socket_number);
+  who(asked_salon->client_salon,client_to_add->socket_number); //
+  asked_salon->client_salon = add_client(asked_salon->client_salon,client_to_add->pseudo,client_to_add->socket_number);
+  who(asked_salon->client_salon,client_to_add->socket_number); //
   asked_salon->number_client+=1;
   printf("nombre clientdans salon = %d\n",asked_salon->number_client);
 }
@@ -439,12 +444,14 @@ void whoisin(struct salon *salon_list,int socket_question, char *name){
     struct salon *salon_cible = find_specific_salon_name(salon_list,name);
     printf("avant who slaon %s\n",salon_cible->name);
     if (salon_cible->number_client==1){
+      printf("new_salon->number_client %d\n",salon_cible->number_client);
       printf("whoisin une seule personne\n");
       who(salon_cible->client_salon,socket_question);
     }
     else {
+    printf("new_salon->number_client %d\n",salon_cible->number_client);
     printf("whoisin 2 personnes\n");
-    who(salon_cible->client_salon->next,socket_question);
+    who(salon_cible->client_salon,socket_question);
     }
   }
   else {
@@ -672,6 +679,7 @@ int main(int argc, char** argv)
              if((current_salon < 1) || (check_name(salon_list,name) == 0)){
                salon_list=add_salon(salon_list, name,current_client->pseudo,current_client->socket_number);
                current_salon++;
+               printf("nbe salon %d\n",current_salon);
                char *creation=malloc(MAX_LENGTH_MESSAGE);
                char *short_name =  malloc(MAX_LENGTH_MESSAGE);
                short_name = supp_last_caractere(name);
@@ -732,6 +740,7 @@ int main(int argc, char** argv)
              char *name_salon=message +7;
              if (check_name(salon_list,name_salon)==1){
                struct salon* salon_to_update = find_specific_salon_name(salon_list,name_salon);
+                 who(salon_to_update->client_salon,tab_fd[i].fd);
                if (check_pseudo(salon_to_update->client_salon,current_client->pseudo)==1){
                  salon_to_update->client_salon=delete_client(salon_to_update->client_salon,tab_fd[i].fd);
                  salon_to_update->number_client-=1;
@@ -739,6 +748,7 @@ int main(int argc, char** argv)
                  char *leave = malloc(MAX_LENGTH_MESSAGE);
                  sprintf(leave,"You left salon %s.\n",name_salon);
                  do_send(tab_fd[i].fd,leave);
+                 who(salon_to_update->client_salon,tab_fd[i].fd);
                }
                else {
                  char *error = "You are not in this salon, you can't leave it.\n";
