@@ -32,17 +32,12 @@ int main(int argc,char** argv)
   tab_fd[1].fd=0;
   tab_fd[1].events=POLLIN;
 
-  // Sending information at the RE216_SERVER
-  char *name_IP = malloc(MAX_LENGTH_MESSAGE);
-  gethostname(name_IP,MAX_LENGTH_MESSAGE);
-  info_server(name_IP,sock_host, socket);
-
   //Chatting with the server
   char *text = malloc(MAX_LENGTH_MESSAGE);
   char *message = malloc(MAX_LENGTH_MESSAGE);
   do_recv(socket,message);
 
-  if (strcmp(message,"Too many clients, connection failed. Come back later\n")==0){
+  if (strcmp(message,"Too many clients, connection failed. Come back later.\n")==0){
     printf("The server has told you : %s",message);
     return 0;
   }
@@ -74,7 +69,10 @@ int main(int argc,char** argv)
     do_recv(socket,message);
     printf("The server has told you : %s",message);
   }
-
+  // Sending information at the RE216_SERVER
+  char *name_IP = malloc(MAX_LENGTH_MESSAGE);
+  gethostname(name_IP,MAX_LENGTH_MESSAGE);
+  info_server(name_IP,sock_host, socket);
   for (;;) { //endless loop
 
     //Polling
