@@ -812,6 +812,16 @@ int main(int argc, char** argv)
 
             else if (strncmp(message,"/send ",6)==0){
 
+              char *impossible = malloc(MAX_LENGTH_MESSAGE);
+              do_recv(tab_fd[i].fd,impossible);
+              printf("impossible %s\n",impossible);
+
+              if (strncmp(impossible,"im",2) == 0){
+                printf("ouverture impossible on fait rien\n");
+              }
+
+              else{
+
               char *destinataire_and_file = message + 6;
               int length_destinataire = position_first_space(destinataire_and_file);
               char *dest_name = malloc(MAX_LENGTH_MESSAGE);
@@ -873,7 +883,7 @@ int main(int argc, char** argv)
 
 
 
-
+            }
             }
 
             else {

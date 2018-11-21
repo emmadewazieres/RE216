@@ -146,6 +146,19 @@ char *supp_last_caractere(char *chaine){
   return(short_chaine);
 }
 
+int position_first_space(char *chaine){
+
+  int lenght = strlen(chaine);
+  printf("lenght %d\n",lenght);
+  int compteur = 0;
+  int i = 0;
+    while(chaine[i]!=' ' && i <=lenght ){
+      compteur = compteur +1;
+      i++;
+    }
+    return compteur;
+}
+
 
 int main(int argc,char** argv)
 {
@@ -292,10 +305,37 @@ int main(int argc,char** argv)
           //Connection to the server
           do_connect(socket_new,(struct sockaddr *)&sock_host_new, sizeof(sock_host_new));
           printf("socket_new /send\n");
-          char *test = malloc(MAX_LENGTH_MESSAGE);
-          do_recv(socket_new,test);
-          printf("test %s\n",test);
 
+          char *nom_fichier = malloc(MAX_LENGTH_MESSAGE);
+          do_recv(socket_new,nom_fichier);
+          printf("nom_fichier %s\n",nom_fichier);
+          nom_fichier = nom_fichier + 15;
+          printf("nom_fichier%s\n",nom_fichier);
+          nom_fichier = supp_last_caractere(nom_fichier);
+
+
+          char *buffer_lecture = malloc(MAX_LENGTH_MESSAGE);
+          do_recv(socket_new,buffer_lecture);
+          printf("test %s\n",buffer_lecture);
+          int length = strlen(buffer_lecture);
+          printf("length %d\n",length);
+
+          char *chemin_fichier = malloc(MAX_LENGTH_MESSAGE);
+          sprintf(chemin_fichier,"/home/berger/T2/ProgR/src/jalon01/toreceive/%s",nom_fichier);
+          int fd_recept = open(chemin_fichier,O_CREAT|O_RDWR, 0777);
+          printf("fd_recu %i\n",fd_recept);
+          int ecriture = write(fd_recept,buffer_lecture,sizeof(char)*length);
+          printf("ecriture %i\n",ecriture);
+          if(ecriture == -1){
+            char *pb_reception = "fichier non recu\n";
+            do_send(socket_new,pb_reception);
+            printf("%s",pb_reception);
+          }
+          else{
+            char *ok_reception = "fichier recu\n";
+            do_send(socket_new,ok_reception);
+            printf("%s",ok_reception);
+          }
           do_close(socket_new);
         }
 
@@ -337,6 +377,44 @@ int main(int argc,char** argv)
         }
 
         else if (strncmp(text,"/send ",6)==0){
+
+          //recuperation nom fichier et fichier
+          char *destinataire_and_file = text + 6;
+          int length_destinataire = position_first_space(destinataire_and_file);
+          char *dest_name = malloc(MAX_LENGTH_MESSAGE);
+          strncpy(dest_name,destinataire_and_file,length_destinataire);
+          dest_name[length_destinataire] = '\n';
+          printf("dest_name %s",dest_name);
+
+          char *fichier = destinataire_and_file + length_destinataire +1;
+          printf("fichier a envoyer = %s",fichier);
+          fichier = supp_last_caractere(fichier);
+
+          char *chemin_fichier = malloc(MAX_LENGTH_MESSAGE);
+          sprintf(chemin_fichier,"/home/berger/T2/ProgR/src/jalon01/tosend/%s",fichier);
+          printf("chemin_fichier%s\n",chemin_fichier);
+
+
+
+          //ouverture fichier
+
+          int descript = open(chemin_fichier,O_RDWR);
+          printf("descript %d\n",descript);
+
+          if(descript == -1){
+            char *possibilite = "impossible";
+            do_send(socket,possibilite);
+            printf("Impossible d'ouvrir le fichier\n");
+          }
+
+          else{
+            char *possibilite = "possible";
+            do_send(socket,possibilite);
+            printf("possible d'ouvrir le fichier\n");
+
+
+
+
 
           char *reponse = malloc(MAX_LENGTH_MESSAGE);
           do_recv(socket,reponse);
@@ -388,9 +466,54 @@ int main(int argc,char** argv)
             int sock_client_new = do_accept(socket_server,(struct sockaddr *)&saddr_in,addrlen);
             printf("apres accept \n");
 
-            //int descript_fichier = open
-            char *test = "fonctionne stp\n";
-            do_send(sock_client_new,test);
+            //recuperation nom fichier et fichier
+            /*char *destinataire_and_file = text + 6;
+            int length_destinataire = position_first_space(destinataire_and_file);
+            char *dest_name = malloc(MAX_LENGTH_MESSAGE);
+            strncpy(dest_name,destinataire_and_file,length_destinataire);
+            dest_name[length_destinataire] = '\n';
+            printf("dest_name %s",dest_name);
+
+            char *fichier = destinataire_and_file + length_destinataire +1;
+            printf("fichier a envoyer = %s",fichier);
+            fichier = supp_last_caractere(fichier);*/
+
+            char *nom_fichier = malloc(MAX_LENGTH_MESSAGE);
+            sprintf(nom_fichier,"envoie fichier %s\n",fichier);
+            do_send(sock_client_new,nom_fichier);
+
+          /*  char *chemin_fichier = malloc(MAX_LENGTH_MESSAGE);
+            sprintf(chemin_fichier,"/home/berger/T2/ProgR/src/jalon01/tosend/%s",fichier);
+            printf("chemin_fichier%s\n",chemin_fichier);
+
+
+
+            //ouverture fichier
+
+            int descript = open(chemin_fichier,O_RDWR);
+            printf("descript %d\n",descript);
+
+            if(descript == 1){
+              printf("Impossible d'ouvrir le fichier\n");
+            }*/
+
+
+              char *buffer_lecture = malloc(MAX_LENGTH_MESSAGE);
+
+	            int lecture = read(descript,buffer_lecture,MAX_LENGTH_MESSAGE);
+	            printf("buffer_lecture %s\n",buffer_lecture);
+
+
+
+
+
+            //char *test = "fonctionne stp\n";
+              do_send(sock_client_new,buffer_lecture);
+
+              char *confirmation = malloc(MAX_LENGTH_MESSAGE);
+              do_recv(sock_client_new,confirmation);
+              printf("confirmation %s\n",confirmation);
+
 
 
             do_close(sock_client_new);
@@ -398,9 +521,11 @@ int main(int argc,char** argv)
             //close 2 socket
           }
 
+
           else{
+
             printf("refuse de recevoir le fichier");
-            printf("%s\n",reponse);
+          }
           }
 
         }
