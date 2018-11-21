@@ -9,19 +9,6 @@ void do_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen){
   }
 }
 
-//Pooling
-void do_poll(struct pollfd *tab_fd){
-  int valeur_poll = poll(tab_fd, 2,-1);
-  if (valeur_poll == -1){
-    perror("ERROR poll failed");
-    exit(EXIT_FAILURE);
-  }
-  if (valeur_poll == 0){
-    perror("ERROR time out");
-    exit(EXIT_FAILURE);
-  }
-}
-
 //Get what the client has to say
 char *readline(){
   char *message = malloc(MAX_LENGTH_MESSAGE);
@@ -47,4 +34,10 @@ void info_server(char *name_IP, struct sockaddr_in sock_host, int socket){
   char *date_s = malloc(MAX_LENGTH_MESSAGE);
   sprintf(date_s,"/date %d/%d/%d at %dh %dm %ds \n", date->tm_mday,date->tm_mon + 1, date->tm_year + 1900, date->tm_hour, date->tm_min, date->tm_sec);
   do_send(socket,date_s);
+}
+
+//Generating a random number between a and b
+int rand_a_b(int a,int b){
+    srand(time(0));
+    return rand()%(b-a)+a;
 }

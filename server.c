@@ -2,8 +2,7 @@
 
 int main(int argc, char** argv){
 
-  if (argc != 2)
-  {
+  if (argc != 2){
     fprintf(stderr, "usage: RE216_SERVER port\n");
     return 1;
   }
@@ -14,7 +13,7 @@ int main(int argc, char** argv){
 
   //Initialisation of the servor
   struct sockaddr_in saddr_in;
-  saddr_in = init_serv_addr(argv[1]);
+  saddr_in = init_serv_addr(atoi(argv[1]));
 
   // Initialisation of client list (chained list)
   struct client* client_list = client_list_init();
@@ -45,11 +44,10 @@ int main(int argc, char** argv){
   for (;;) { //endless loop
 
     //Polling
-    do_poll(tab_fd);
+    do_poll(tab_fd,NUMBER_OF_CONNECTION+1);
 
     for(int i=0;i<=NUMBER_OF_CONNECTION+1;i++) {
       if (tab_fd[i].revents==POLLIN){
-
         if (tab_fd[0].revents==POLLIN){
           socklen_t taille = sizeof(saddr_in);
           socklen_t* addrlen = &taille;
@@ -157,7 +155,6 @@ int main(int argc, char** argv){
               sprintf(creation,"You have created salon %s\n",short_name);
               do_send(tab_fd[i].fd,creation);
             }
-
             else{
               do_send(tab_fd[i].fd,"This name already exits, choose another one.\n");
             }
@@ -221,16 +218,16 @@ int main(int argc, char** argv){
               char *sender = malloc(MAX_LENGTH_MESSAGE);
               strncpy(sender, current_client->pseudo,length-1);
               char *group=malloc(MAX_LENGTH_MESSAGE);
-              sprintf(group,"[%s in salon] : %s\n",sender,message_salon);
-
+              sprintf(group,"[%s in salon] : %s",sender,message_salon);
               dest_salon = find_specific_salon_name(salon_list, dest_name);
               if(check_pseudo(dest_salon->client_salon, current_client->pseudo) == 0){
                 do_send(tab_fd[i].fd,"You are not in this salon.\n");
               }
+              else if (dest_salon->number_client == 1){
+                do_send(tab_fd[i].fd,"You are alone in this salon.\n");
+              }
               else{
-                int number_client;
-                number_client = dest_salon->number_client;
-                for(int k=1;k<=number_client;k++) {
+                for(int k=1;k<=dest_salon->number_client;k++) {
                   if (k != i){
                     do_send(tab_fd[k].fd,group);
                   }
@@ -238,8 +235,47 @@ int main(int argc, char** argv){
               }
             }
           }
+
+          else if (strncmp(message,"/send ",6)==0){
+              char *destinataire_and_file = message + 6;
+              int length_destinataire = position_first_space(destinataire_and_file);
+              char *dest_name = malloc(MAX_LENGTH_MESSAGE);
+              strncpy(dest_name,destinataire_and_file,length_destinataire);
+              dest_name[length_destinataire] = '\n';
+              char *fichier = destinataire_and_file + length_destinataire;
+              if(check_pseudo(client_list, dest_name) == 0){
+                char *warning = "Warning! This user doesn't exist, you can't contact him.\n";
+                do_send(tab_fd[i].fd,warning);
+              }
+              else if(strcmp(current_client->pseudo, dest_name) == 0){
+                char *warning = "Warning! You can't send a file to yourself.\n";
+                do_send(tab_fd[i].fd,warning);
+              }
+              else{
+                struct client *client_to_send;
+                client_to_send = find_specific_client_pseudo(client_list, dest_name);
+                char *pseudo = supp_last_caractere(current_client->pseudo);
+                char *send = malloc(MAX_LENGTH_MESSAGE);
+                sprintf(send,"/send %s wants to send you a file. Do you accept ?\n",pseudo);
+                do_send(client_to_send->socket_number,send);
+                char *reponse = malloc(MAX_LENGTH_MESSAGE);
+                do_recv(client_to_send->socket_number,reponse);
+                if(strcmp(reponse, "yes\n") == 0){
+                  do_send(tab_fd[i].fd,"Your request was accepted.\n");
+                  char *message_port = malloc(MAX_LENGTH_MESSAGE);
+                  do_recv(tab_fd[i].fd,message_port);
+                  do_send(client_to_send->socket_number,message_port);
+                }
+                else{
+                  do_send(tab_fd[i].fd,"Your request was not accepted, the file has not been sent.\n");
+                }
+              }
+            }
+
           else {
-            do_send(tab_fd[i].fd, message);
+            char *send = malloc(MAX_LENGTH_MESSAGE);
+            sprintf(send,"[server] : %s",message);
+            do_send(tab_fd[i].fd, send);
             fflush(stdout);
           }
           //free(message);

@@ -16,13 +16,13 @@
 //Connection with the server
 void do_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 
-//Pooling
-void do_poll(struct pollfd *tab_fd);
-
 //Get what the client has to say
 char *readline();
 
 //Sending info to the server
 void info_server(char *name_IP, struct sockaddr_in sock_host, int socket);
+
+//Generating a random number between a and b
+int rand_a_b(int a,int b);
 
 #endif

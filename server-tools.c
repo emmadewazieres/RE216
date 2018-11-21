@@ -1,71 +1,5 @@
 #include "server-tools.h"
 
-//Initialisation of the server
-struct sockaddr_in init_serv_addr(const char* port){
-  int portno;
-  struct sockaddr_in saddr_in;
-  memset(&saddr_in,'\0', sizeof(saddr_in));
-  portno = atoi(port);
-  saddr_in.sin_port = htons(portno);
-  saddr_in.sin_family = AF_INET;
-  saddr_in.sin_addr.s_addr = INADDR_ANY;
-  return(saddr_in);
-}
-
-//Binding
-int do_bind(int sock, const struct sockaddr *adr, int adrlen){
-  int bind_value = bind(sock,adr, adrlen);
-  if (bind_value == -1)
-  {
-    perror("ERROR binding failed");
-    exit(EXIT_FAILURE);
-  }
-}
-
-//Listening
-int do_listen(int socket,int backlog){
-  int listening = listen(socket,backlog);
-  if (listening == -1){
-    perror("ERROR listening failed");
-    exit(EXIT_FAILURE);
-  }
-  return(listening);
-}
-
-//Acceptation
-int do_accept(int socket, struct sockaddr* addr, socklen_t *addrlen){
-  int sock_client = accept(socket,addr, addrlen);
-  if (sock_client == -1){
-    perror("ERROR acceptation failed");
-    exit(EXIT_FAILURE);
-  }
-  return(sock_client);
-}
-
-//Closing
-void do_close(int sockfd){
-  int closing = close(sockfd);
-  if (closing == -1){
-    perror("ERROR closing failed");
-    exit(EXIT_FAILURE);
-  }
-}
-
-//Pooling
-void do_poll(struct pollfd *tab_fd){
-  int valeur_poll = poll(tab_fd, NUMBER_OF_CONNECTION+1,-1);
-  if (valeur_poll == -1){
-    perror("ERROR poll failed");
-    exit(EXIT_FAILURE);
-  }
-  if (valeur_poll == 0){
-    perror("ERROR time out");
-    exit(EXIT_FAILURE);
-  }
-}
-
-
-
 //Initialisation of the chained list
 struct client* client_list_init(){
   struct client *client_list_init;
@@ -169,7 +103,6 @@ struct client *find_specific_client_pseudo(struct client *client_list, char *pse
   }
   struct client *tmp;
   tmp = client_list;
-
   while(tmp->next != NULL){
     if (strcmp(tmp->pseudo,pseudo)==0){
       return tmp;
@@ -204,9 +137,7 @@ void who(struct client *client_list,int socket_question){
   }
   strcat(message,list_of_client);
   do_send(socket_question,message);
-  // free(list);
-  // free(list_of_client);
-  // free(message);
+  // free(list); free(list_of_client); free(message);
 }
 
 //Sending information about a client to the client that asks for them
@@ -228,18 +159,6 @@ void whois(struct client *client_list,char*message,struct client*current_client)
     do_send(current_client->socket_number,message);
     //free(message);
   }
-}
-
-//Giving the position of the first space in a string
-int position_first_space(char *chaine){
-  int lenght = strlen(chaine);
-  int compteur = 0;
-  int i = 0;
-  while(chaine[i]!=' ' && i <=lenght ){
-    compteur = compteur +1;
-    i++;
-  }
-  return compteur;
 }
 
 //Initialisation of the salon chained list
@@ -344,12 +263,8 @@ struct salon *find_specific_salon_name(struct salon *salon_list, char *name){
 //Adding client in a specific salon
 void add_client_in_salon(struct salon *salon_list,char *name,struct client *client_to_add){
   struct salon *asked_salon = find_specific_salon_name(salon_list,name);
-  printf("dans add salon %s",asked_salon->name);
-
   asked_salon->client_salon = add_client(asked_salon->client_salon,client_to_add->pseudo,client_to_add->socket_number);
-
   asked_salon->number_client+=1;
-  printf("nombre clientdans salon = %d\n",asked_salon->number_client);
 }
 
 //Sending the salons that have been created (that are in the salon chained list) to a client
@@ -441,7 +356,6 @@ void mysalon(struct salon *salon_list,struct client* current_client){
     strcat(message,list_of_salon);
     do_send(current_client->socket_number,message);
     //free(list); free(list_of_salon); free(message);
-
   }
 }
 

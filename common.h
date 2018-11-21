@@ -32,11 +32,28 @@ struct salon {
   struct salon *next;
 };
 
-
 #define MAX_LENGTH_MESSAGE 1000
+
+//Initialisation of the server
+struct sockaddr_in init_serv_addr(int port);
 
 //Creation of the socket
 int do_socket();
+
+//Binding
+int do_bind(int sock, const struct sockaddr *adr, int adrlen);
+
+//Listening
+int do_listen(int socket,int backlog);
+
+//Acceptation
+int do_accept(int socket, struct sockaddr* addr, socklen_t *addrlen);
+
+//Pooling
+void do_poll(struct pollfd *tab_fd,int nb);
+
+//Closing
+void do_close(int sockfd);
 
 //Sending
 void do_send(int sockfd, const void *text);
@@ -46,5 +63,8 @@ int do_recv(int sockfd, void *message);
 
 //Erasing the last character of a string
 char *supp_last_caractere(char *chaine);
+
+//Giving the position of the first space in a string
+int position_first_space(char *chaine);
 
 #endif

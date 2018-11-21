@@ -13,25 +13,6 @@
 
 #define NUMBER_OF_CONNECTION 20
 
-
-//Initialisation of the server
-struct sockaddr_in init_serv_addr(const char* port);
-
-//Binding
-int do_bind(int sock, const struct sockaddr *adr, int adrlen);
-
-//Listening
-int do_listen(int socket,int backlog);
-
-//Acceptation
-int do_accept(int socket, struct sockaddr* addr, socklen_t *addrlen);
-
-//Closing
-void do_close(int sockfd);
-
-//Pooling
-void do_poll(struct pollfd *tab_fd);
-
 //Initialisation of the chained list
 struct client* client_list_init();
 
@@ -55,9 +36,6 @@ void who(struct client *client_list,int socket_question);
 
 //Sending information about a client to the client that asks for them
 void whois(struct client *client_list,char*message,struct client*current_client);
-
-//Giving the position of the first space in a string
-int position_first_space(char *chaine);
 
 //Initialisation of the salon chained list
 struct salon* salon_list_init();
