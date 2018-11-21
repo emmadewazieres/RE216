@@ -127,7 +127,6 @@ struct client {
   char *IP_address;
   int port_number;
   char *date;
-  int nb_salon_in;
   struct client *next;
 };
 
@@ -405,9 +404,9 @@ struct salon *find_specific_salon_name(struct salon *salon_list, char *name){
 void add_client_in_salon(struct salon *salon_list,char *name,struct client *client_to_add){
   struct salon *asked_salon = find_specific_salon_name(salon_list,name);
   printf("dans add salon %s",asked_salon->name);
-
+  who(asked_salon->client_salon,client_to_add->socket_number);
   asked_salon->client_salon = add_client(asked_salon->client_salon,client_to_add->pseudo,client_to_add->socket_number);
-
+  who(asked_salon->client_salon,client_to_add->socket_number);
   asked_salon->number_client+=1;
   printf("nombre clientdans salon = %d\n",asked_salon->number_client);
 }
@@ -437,15 +436,11 @@ void which(struct salon *salon_list,int socket_question){
   do_send(socket_question,liste_of_salon);
 }
 
-void whoisin(struct salon *salon_list,int socket_question, char *name,int current_salon){
+void whoisin(struct salon *salon_list,int socket_question, char *name){
   if (salon_list==NULL){
     perror("ERROR whoisin function");
   }
-  if(current_salon == 0){
-    char *text = "This salon doesn't exist.\n";
-    do_send(socket_question,text);
-  }
-  else if(check_name(salon_list,name) == 1){
+  if(check_name(salon_list,name) == 1){
     struct salon *salon_cible = find_specific_salon_name(salon_list,name);
     printf("avant who slaon %s\n",salon_cible->name);
     if (salon_cible->number_client==1){
@@ -456,7 +451,7 @@ void whoisin(struct salon *salon_list,int socket_question, char *name,int curren
     else {
     printf("new_salon->number_client %d\n",salon_cible->number_client);
     printf("whoisin 2 personnes\n");
-    who(salon_cible->client_salon,socket_question);
+    who(salon_cible->client_salon->next,socket_question);
     }
   }
   else {
@@ -464,32 +459,6 @@ void whoisin(struct salon *salon_list,int socket_question, char *name,int curren
     do_send(socket_question,text);
   }
 }
-
-/*struct salon *leave_salon_apres_quit(struct salon *salon_list,struct client *current_client,int socket_fd){
-  struct salon *tmp_salon;
-  tmp_salon = salon_list;
-  int cmp = 0;
-
-
-  if(tmp_salon->next == NULL){
-    printf("tmp_salon == NULL\n");
-  }
-  while(tmp_salon->next != NULL){
-    printf("salut\n");
-    if(check_pseudo(tmp_salon->client_salon, current_client->pseudo) == 1){
-      cmp ++;
-      printf("cmp = %d\n",cmp);
-
-      tmp_salon->client_salon=delete_client(tmp_salon->client_salon,socket_fd);
-
-
-      tmp_salon->number_client-=1;
-    }
-  tmp_salon = tmp_salon->next;
-
-}
-  return (tmp_salon);
-}*/
 
 char *supp_last_caractere(char *chaine){
   int length = strlen(chaine);
@@ -564,7 +533,6 @@ int main(int argc, char** argv)
               char *hello="Hello client !\n";
               do_send(tab_fd[j].fd,hello);
               client_list=add_client(client_list,NULL,tab_fd[j].fd);
-              client_list->nb_salon_in = 0;
               break;
             }
           }
@@ -635,22 +603,14 @@ int main(int argc, char** argv)
           }
 
           else if ((strcmp(message,"/quit\n") == 0)){
-            if(current_client->nb_salon_in != 0){
-              char *pb_quit=malloc(MAX_LENGTH_MESSAGE);
-              sprintf(pb_quit,"You are in %d salons. Please leave it/them before to quit\n",current_client->nb_salon_in);
-              do_send(tab_fd[i].fd,pb_quit);
-            }
-            else{
             client_list = delete_client(client_list,tab_fd[i].fd);
             current_connection-=1;
-            char *last_message = "/ok_to_quit Closing connection.\n";
+            char *last_message = "Closing connection.\n";
             do_send(tab_fd[i].fd,last_message);
             printf("Closing client n°%d connection.%d current connection(s).\n",i,current_connection);
             fflush(stdout);
-
             do_close(tab_fd[i].fd);
             tab_fd[i].fd=0;
-          }
           }
 
           else if ((strcmp(message,"/who\n") == 0)){
@@ -719,9 +679,6 @@ int main(int argc, char** argv)
              if((current_salon < 1) || (check_name(salon_list,name) == 0)){
                salon_list=add_salon(salon_list, name,current_client->pseudo,current_client->socket_number);
                current_salon++;
-               current_client->nb_salon_in ++;
-               printf("current_client->nb_salon_in = %d\n",current_client->nb_salon_in);
-
                printf("nbe salon %d\n",current_salon);
                char *creation=malloc(MAX_LENGTH_MESSAGE);
                char *short_name =  malloc(MAX_LENGTH_MESSAGE);
@@ -748,8 +705,6 @@ int main(int argc, char** argv)
                  char *join = malloc(MAX_LENGTH_MESSAGE);
                  sprintf(join,"you joined salon %s ",name_salon);
                  add_client_in_salon(salon_list,name_salon,current_client);
-                 current_client->nb_salon_in ++;
-                 printf("current_client->nb_salon_in = %d\n",current_client->nb_salon_in);
                  printf("ici\n");
                  do_send(tab_fd[i].fd,join);
              }
@@ -778,7 +733,7 @@ int main(int argc, char** argv)
              /*char *variable=malloc(MAX_LENGTH_MESSAGE);
              variable = who2(client_list,tab_fd[i].fd);
              printf("variable %s\n",variable);*/
-             whoisin(salon_list,current_client->socket_number,name_salon,current_salon);
+             whoisin(salon_list,current_client->socket_number,name_salon);
            }
 
            else if (strncmp(message,"/leave ",7)==0){
@@ -789,7 +744,6 @@ int main(int argc, char** argv)
                if (check_pseudo(salon_to_update->client_salon,current_client->pseudo)==1){
                  salon_to_update->client_salon=delete_client(salon_to_update->client_salon,tab_fd[i].fd);
                  salon_to_update->number_client-=1;
-                 current_client->nb_salon_in --;
                  printf("nombre cients dans salon %d\n",salon_to_update->number_client);
                  char *leave = malloc(MAX_LENGTH_MESSAGE);
                  sprintf(leave,"You left salon %s.\n",name_salon);
@@ -802,8 +756,6 @@ int main(int argc, char** argv)
                }
                if (salon_to_update->number_client==0){
                  salon_list = delete_salon(salon_list,name_salon);
-                 current_salon --;
-                 printf("current_salon = %d \n",current_salon);
                }
              }
              else {
@@ -858,6 +810,71 @@ int main(int argc, char** argv)
 
             }
 
+            else if (strncmp(message,"/send ",6)==0){
+
+              char *destinataire_and_file = message + 6;
+              int length_destinataire = position_first_space(destinataire_and_file);
+              char *dest_name = malloc(MAX_LENGTH_MESSAGE);
+              strncpy(dest_name,destinataire_and_file,length_destinataire);
+              dest_name[length_destinataire] = '\n';
+              printf("dest_name %s",dest_name);
+
+              char *fichier = destinataire_and_file + length_destinataire;
+              printf("fichier a envoyer = %s\n",fichier);
+
+              if(check_pseudo(client_list, dest_name) == 0){
+                char *warning = "Warning! This user doesn't exist, you can't contact him.\n";
+                do_send(tab_fd[i].fd,warning);
+                printf("client non existant\n");
+              }
+              else if(strcmp(current_client->pseudo, dest_name) == 0){
+                char *warning = "Warning! You can't send yourself a file\n";
+                do_send(tab_fd[i].fd,warning);
+                printf("c est toi meme \n");
+              }
+              else{
+                struct client *client_to_send;
+                client_to_send = find_specific_client_pseudo(client_list, dest_name);
+
+                char *send = malloc(MAX_LENGTH_MESSAGE);
+                sprintf(send,"/send %s wants to send you %s. Do you accept ?\n",current_client->pseudo,fichier);
+                do_send(client_to_send->socket_number,send);
+                printf("client existant \n");
+
+                char *reponse = malloc(MAX_LENGTH_MESSAGE);
+                do_recv(client_to_send->socket_number,reponse);
+
+
+                char *yes = "yes\n";
+                if(strcmp(reponse, yes) == 0){
+                  printf("il a accepte de recevoir le fichier\n");
+                  do_send(tab_fd[i].fd,reponse);
+
+                  char *message_port = malloc(MAX_LENGTH_MESSAGE);
+                  do_recv(tab_fd[i].fd,message_port);
+                  printf("message_port = %s\n",message_port);
+                  do_send(client_to_send->socket_number,message_port);
+
+                }
+                else{
+                  printf("il a refuse le fichier\n");
+                  char *refus_message = malloc(MAX_LENGTH_MESSAGE);
+                  printf("client_to_send->pseudo %s\n",client_to_send->pseudo);
+                  sprintf(refus_message," %s a refuse de recevoir le fichier %s\n",client_to_send->pseudo,fichier);
+                  do_send(tab_fd[i].fd,refus_message);
+                }
+
+              }
+              //check pseudo
+              // pas compris comment se connecter ensemble client client
+              //quelle  info envoie le serveur ?
+              // je sais pas
+
+
+
+
+
+            }
 
             else {
               do_send(tab_fd[i].fd,message);

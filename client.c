@@ -12,6 +12,12 @@
 
 #define MAX_LENGTH_MESSAGE 1000
 
+//Generation nombre aléatoire entre a et b
+int rand_a_b(int a,int b){
+    srand(time(0));
+    return rand()%(b-a)+a;
+}
+
 //Creation of the socket
 int do_socket(){
   int sockfd = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
@@ -24,11 +30,65 @@ int do_socket(){
     return(sockfd);
 }
 
+
+//Initialisation of the server
+struct sockaddr_in init_serv_addr(int port){
+  //int portno;
+  struct sockaddr_in saddr_in;
+  memset(&saddr_in,'\0', sizeof(saddr_in));
+  //portno = atoi(port)+1;
+  saddr_in.sin_port = htons(port);
+
+  saddr_in.sin_family = AF_INET;
+  saddr_in.sin_addr.s_addr = INADDR_ANY;
+  return(saddr_in);
+}
+
+//Binding
+int do_bind(int sock, const struct sockaddr *adr, int adrlen){
+  int bind_value = bind(sock,adr, adrlen);
+  if (bind_value == -1)
+  {
+    perror("ERROR binding failed");
+    //exit(EXIT_FAILURE);
+  }
+}
+
+//Listening
+int do_listen(int socket,int backlog){
+  int listening = listen(socket,backlog);
+  if (listening == -1){
+    perror("ERROR listening failed");
+    exit(EXIT_FAILURE);
+  }
+  return(listening);
+}
+
+//Acceptation
+int do_accept(int socket, struct sockaddr* addr, socklen_t *addrlen){
+  int sock_client = accept(socket,addr, addrlen);
+  if (sock_client == -1){
+    perror("ERROR acceptation failed");
+    exit(EXIT_FAILURE);
+  }
+  return(sock_client);
+}
+
+
 //Connection with the server
 void do_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen){
   int connection = connect(sockfd,addr,addrlen);
   if (connection !=0){
     perror("ERROR connection failed");
+    exit(EXIT_FAILURE);
+  }
+}
+
+//Closing
+void do_close(int sockfd){
+  int closing = close(sockfd);
+  if (closing == -1){
+    perror("ERROR closing failed");
     exit(EXIT_FAILURE);
   }
 }
@@ -103,10 +163,13 @@ int main(int argc,char** argv)
     sock_host.sin_port = htons(atoi(argv[2]));
     inet_aton(argv[1], &sock_host.sin_addr);
 
+    printf("sock_host.sin_port %d\n",sock_host.sin_port);
+
 
 
     //Creation of the socket
     int socket = do_socket();
+    printf("socket %d\n",socket);
 
     //Connection to the server
     do_connect(socket,(struct sockaddr *)&sock_host, sizeof(sock_host));
@@ -196,6 +259,47 @@ int main(int argc,char** argv)
         do_recv(socket,message);
         printf("%s",message);
         fflush(stdout);
+
+
+        if(strncmp(message,"/send",5) == 0){
+          printf("j ai recu send du grand serveur\n");
+          printf("%s",message + 5);
+          char *reponse = readline();
+          do_send(socket,reponse);
+          char *yes = "yes\n";
+          if(strcmp(reponse, yes) == 0){
+
+          char *new_port = malloc(MAX_LENGTH_MESSAGE);
+          do_recv(socket,new_port);
+          printf("new_port %s\n",new_port);
+          int port = atoi(new_port);
+          printf("jfnnk %d\n",port);
+
+
+          //get address info from the server
+          struct sockaddr_in sock_host_new;
+          memset(&sock_host_new,'\0',sizeof(sock_host_new));
+          sock_host_new.sin_family = AF_INET;
+          sock_host_new.sin_port = htons(port);
+          inet_aton(argv[1], &sock_host_new.sin_addr);
+
+          printf("sock_host_new.sin_port %d\n",sock_host_new.sin_port);
+
+          //Creation of the socket
+          int socket_new = do_socket();
+          printf("socket_new %d\n",socket_new);
+
+          //Connection to the server
+          do_connect(socket_new,(struct sockaddr *)&sock_host_new, sizeof(sock_host_new));
+          printf("socket_new /send\n");
+          char *test = malloc(MAX_LENGTH_MESSAGE);
+          do_recv(socket_new,test);
+          printf("test %s\n",test);
+
+          do_close(socket_new);
+        }
+
+        }
       }
 
       if (tab_fd[1].revents==POLLIN){
@@ -213,9 +317,9 @@ int main(int argc,char** argv)
           printf("The server has told you : %s",message);
           return(0);
         }
-        else{
+          else{
           printf("The server has told you : %s",message);
-        }
+          }
         }
         if (strcmp(text,"/who\n")==0){
           do_recv(socket,message);
@@ -230,6 +334,75 @@ int main(int argc,char** argv)
           char *name = supp_last_caractere(name_salon);
           do_recv(socket, message);
           printf("Users in %s are :\n%s",name,message);
+        }
+
+        else if (strncmp(text,"/send ",6)==0){
+
+          char *reponse = malloc(MAX_LENGTH_MESSAGE);
+          do_recv(socket,reponse);
+
+          char *yes = "yes\n";
+          if(strncmp(reponse, yes,3) == 0){
+
+          printf("tu joues le role de serveur\n");
+
+
+          //if(strncmp(warning_msg, dest_name) == 0){
+
+
+            //Creation of the socket
+            int socket_server;
+            socket_server=do_socket();
+            printf("socket_server %d\n",socket_server);
+
+            int nbe_aleatoire = rand_a_b(8200,16000);
+            printf("nbe_aleatoire = %d\n",nbe_aleatoire);
+            char *aleatoire = malloc(MAX_LENGTH_MESSAGE);
+            sprintf(aleatoire,"%d",nbe_aleatoire);
+            printf("aleatoire %s\n",aleatoire);
+            do_send(socket,aleatoire);
+
+            //Initialisation of the servor
+            struct sockaddr_in saddr_in;
+            saddr_in = init_serv_addr(nbe_aleatoire);
+
+
+
+            //Binding
+            printf("avant bind \n");
+
+            printf("htons(8080) %d \n",htons(8080));
+            printf("htons(8080) %d \n",htons(8080));
+            printf("htons(0) %d \n",htons(0));
+
+
+
+            do_bind(socket_server,(struct sockaddr *)&saddr_in,sizeof(saddr_in));
+            printf("apres bind \n");
+            //Listening
+            do_listen(socket_server,SOMAXCONN);
+            printf("apres listen \n");
+
+            socklen_t taille = sizeof(saddr_in);
+            socklen_t* addrlen = &taille;
+            int sock_client_new = do_accept(socket_server,(struct sockaddr *)&saddr_in,addrlen);
+            printf("apres accept \n");
+
+            //int descript_fichier = open
+            char *test = "fonctionne stp\n";
+            do_send(sock_client_new,test);
+
+
+            do_close(sock_client_new);
+            do_close(socket_server);
+            //close 2 socket
+          }
+
+          else{
+            printf("refuse de recevoir le fichier");
+            printf("%s\n",reponse);
+          }
+
         }
         /*else {
           do_recv(socket,message);
